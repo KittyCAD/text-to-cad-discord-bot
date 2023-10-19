@@ -622,6 +622,31 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
 
     // Okay, we successfully got a model!
     slog::info!(logger, "Design completed: {:?}", model.prompt);
+
+    // Get the gltf bytes.
+    let mut gltf_bytes = vec![];
+    if let Some(outputs) = model.outputs {
+        for (key, value) in outputs {
+            if key.ends_with(".gltf") {
+                gltf_bytes = value.0;
+                break;
+            }
+        }
+    } else {
+        slog::warn!(logger, "Design completed, but no gltf outputs: {:?}", model);
+        msg.reply(ctx, "Your design completed, but no gltf outputs were found. :(")
+            .await?;
+    }
+
+    // This is CPU bound so let's force it on another thread.
+    let image_bytes = tokio::task::spawn_blocking(move || {
+        // Convert the gltf bytes into an image.
+        crate::image::model_to_image(&gltf_bytes)
+    })
+    .await??;
+
+    slog::info!(logger, "Got image bytes: {}", image_bytes.len());
+
     // TODO: do something with it.
     msg.reply(ctx, "Your design completed! :)").await?;
 
