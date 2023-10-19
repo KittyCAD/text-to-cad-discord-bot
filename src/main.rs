@@ -97,6 +97,8 @@ impl Opts {
 pub enum SubCommand {
     /// Run the server.
     Server(Server),
+    /// Convert a gltf file to an image.
+    ConvertImage(ConvertImage),
 }
 
 /// A subcommand for running the server.
@@ -125,6 +127,18 @@ pub struct Server {
     /// The KittyCAD API token to use.
     #[clap(long, env = "KITTYCAD_API_TOKEN")]
     pub kittycad_api_token: String,
+}
+
+/// A subcommand for converting a gltf file to an image.
+#[derive(Parser, Clone, Debug)]
+pub struct ConvertImage {
+    // Path to the gltf file.
+    #[clap(short, long)]
+    pub gltf_path: std::path::PathBuf,
+
+    // Path to the output image file.
+    #[clap(short, long)]
+    pub image_path: std::path::PathBuf,
 }
 
 // A container type is created for inserting into the Client's `data`, which
@@ -394,6 +408,13 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             // So we should abort our handle for our server.
             handle.abort();
         }
+
+        SubCommand::ConvertImage(c) => {
+            let gltf_bytes = std::fs::read(&c.gltf_path)?;
+            let image_bytes = crate::image::model_to_image(&gltf_bytes)?;
+
+            std::fs::write(&c.image_path, image_bytes)?;
+        }
     }
 
     Ok(())
@@ -504,7 +525,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .ok_or(anyhow::anyhow!("Kittycad client not found"))?;
 
     // This is CPU bound so let's force it on another thread.
-    let (image_bytes, string_reply, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
+    let (image_file, string_reply, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
 
     if let Some(string_reply) = string_reply {
         msg.reply(ctx, &string_reply).await?;
@@ -516,11 +537,9 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         anyhow::bail!("No model found");
     };
 
-    // Save the image to a temp file.
-    let image_file = format!("{}.png", model.id);
-    let image_path = std::env::temp_dir().join(&image_file);
-    // Write the bytes to the file.
-    std::fs::write(&image_path, &image_bytes)?;
+    let Some(image_path) = image_file else {
+        anyhow::bail!("No image found");
+    };
 
     // Show that we are done working on it.
     msg.react(ctx, '👍').await?;
@@ -531,7 +550,10 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
             m.content(msg.author.mention())
                 .embed(|e| {
                     e.title(prompt)
-                        .image(&format!("attachment://{}", image_file))
+                        .image(&format!(
+                            "attachment://{}",
+                            image_path.file_name().unwrap().to_string_lossy()
+                        ))
                         // Thumbs up or down emoji.
                         .footer(|f| f.text("Add a 👍 or 👎 to this message to give feedback."))
                         // Add a timestamp for the current time
@@ -541,6 +563,9 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
                 .add_file(&image_path)
         })
         .await?;
+
+    // Remove the file.
+    std::fs::remove_file(&image_path)?;
 
     // Wait for feedback to the model based on emoji reaction.
     let reaction = our_msg
@@ -583,7 +608,11 @@ async fn get_image_bytes_for_prompt(
     logger: &slog::Logger,
     kittycad_client: &kittycad::Client,
     prompt: &str,
-) -> Result<(Vec<u8>, Option<String>, Option<kittycad::types::TextToCad>)> {
+) -> Result<(
+    Option<std::path::PathBuf>,
+    Option<String>,
+    Option<kittycad::types::TextToCad>,
+)> {
     slog::info!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
@@ -662,15 +691,11 @@ async fn get_image_bytes_for_prompt(
     if model.status == kittycad::types::ApiCallStatus::Failed {
         if let Some(error) = model.error {
             slog::warn!(logger, "Design failed: {}", error);
-            return Ok((
-                vec![],
-                Some(format!(":( Your prompt returned an error: {}", error)),
-                None,
-            ));
+            return Ok((None, Some(format!(":( Your prompt returned an error: {}", error)), None));
         } else {
             slog::warn!(logger, "Design failed: {:?}", model);
             return Ok((
-                vec![],
+                None,
                 Some("Your prompt returned an error, but no error message. :(".to_string()),
                 None,
             ));
@@ -680,7 +705,7 @@ async fn get_image_bytes_for_prompt(
     if model.status != kittycad::types::ApiCallStatus::Completed {
         slog::warn!(logger, "Design timed out: {:?}", model);
 
-        return Ok((vec![], Some("Your prompt timed out. :(".to_string()), None));
+        return Ok((None, Some("Your prompt timed out. :(".to_string()), None));
     }
 
     // Okay, we successfully got a model!
@@ -698,23 +723,44 @@ async fn get_image_bytes_for_prompt(
     } else {
         slog::warn!(logger, "Design completed, but no gltf outputs: {:?}", model);
         return Ok((
-            vec![],
+            None,
             Some("Your design completed, but no gltf outputs were found. :(".to_string()),
             None,
         ));
     }
 
-    // TODO: fix this so it can run on any thread.
     // This is CPU bound so let's force it on another thread.
-    /*let image_bytes = tokio::task::spawn_blocking(move || {
-        // Convert the gltf bytes into an image.
-        crate::image::model_to_image(&gltf_bytes)
-    })
-    .await??;
+    let image_path = tokio::task::spawn_blocking(move || gltf_to_image(&gltf_bytes)).await??;
 
-    slog::info!(logger, "Got image bytes: {}", image_bytes.len());*/
+    Ok((Some(image_path), None, Some(model)))
+}
 
-    Ok((vec![], None, Some(model)))
+/// Re-execute ourselves to convert the gltf file to an image.
+fn gltf_to_image(contents: &[u8]) -> Result<std::path::PathBuf> {
+    // Create a temp file.
+    let temp_dir = std::env::temp_dir();
+    let gltf_path = temp_dir.join(format!("{}.gltf", uuid::Uuid::new_v4()));
+    let image_path = temp_dir.join(format!("{}.png", uuid::Uuid::new_v4()));
+
+    // Write the gltf bytes to the file.
+    std::fs::write(&gltf_path, contents)?;
+
+    // Re-execute ourselves to convert the gltf file to an image.
+    let output = std::process::Command::new(std::env::current_exe()?)
+        .arg("convert-image")
+        .arg("--gltf-path")
+        .arg(&gltf_path)
+        .arg("--image-path")
+        .arg(&image_path)
+        .output()?;
+
+    println!("status: {}", output.status);
+
+    // Remove the gltf file.
+    std::fs::remove_file(&gltf_path)?;
+
+    // Return the image path.
+    Ok(image_path)
 }
 
 #[cfg(test)]
@@ -723,7 +769,7 @@ mod test {
 
     use crate::get_image_bytes_for_prompt;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_get_image_from_prompt() {
         let logger = {
             let decorator = slog_term::PlainDecorator::new(slog_term::TestStdoutWriter);
@@ -734,11 +780,11 @@ mod test {
         let mut kittycad_client = kittycad::Client::new_from_env();
         kittycad_client.set_base_url("https://api.dev.kittycad.io");
 
-        let (image_bytes, string_reply, model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
+        let (image_file, string_reply, model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
             .await
             .unwrap();
         assert!(string_reply.is_none());
         assert!(model.is_some());
-        //assert!(!image_bytes.is_empty());
+        assert!(image_file.is_some());
     }
 }
