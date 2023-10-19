@@ -62,7 +62,7 @@ pub async fn listen_auth_discord_consent(
 ) -> Result<HttpResponseOk<UserConsentUrl>, HttpError> {
     let ctx = rqctx.context();
     Ok(HttpResponseOk(UserConsentUrl {
-        url: format!("https://discord.com/api/oauth2/authorize?client_id={}&permissions=8&redirect_uri={}&response_type=code&scope={}&permissions=70368744177655",
+        url: format!("https://discord.com/api/oauth2/authorize?client_id={}&permissions=8&redirect_uri={}&response_type=code&scope={}&permissions={}",
                  ctx.settings.discord_client_id,
                  ctx.settings.discord_redirect_uri,
                  [
@@ -73,6 +73,7 @@ pub async fn listen_auth_discord_consent(
                     "guilds.members.read",
                     "webhook.incoming",
                  ].join("%20"),
+                serenity::model::gateway::GatewayIntents::all().bits(),
         ),
     }))
 }
