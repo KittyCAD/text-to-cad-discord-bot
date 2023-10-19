@@ -702,5 +702,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         }
     }
 
+    // TODO: add export button.
+
     Ok(())
 }
