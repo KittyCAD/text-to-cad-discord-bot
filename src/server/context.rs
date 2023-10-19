@@ -6,14 +6,19 @@ use anyhow::Result;
 pub struct Context {
     pub schema: serde_json::Value,
     pub logger: slog::Logger,
+    pub settings: crate::Server,
 }
 
 impl Context {
     /**
      * Return a new Context.
      */
-    pub async fn new(schema: serde_json::Value, logger: slog::Logger) -> Result<Context> {
+    pub async fn new(schema: serde_json::Value, logger: slog::Logger, settings: crate::Server) -> Result<Context> {
         // Create the context.
-        Ok(Context { schema, logger })
+        Ok(Context {
+            schema,
+            logger,
+            settings,
+        })
     }
 }

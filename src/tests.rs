@@ -6,7 +6,7 @@ use pretty_assertions::assert_eq;
 use test_context::{test_context, AsyncTestContext};
 
 struct ServerContext {
-    config: crate::core::Server,
+    config: crate::Server,
     server: dropshot::HttpServer<Arc<crate::server::context::Context>>,
     client: reqwest::Client,
 }
@@ -15,22 +15,21 @@ impl ServerContext {
     pub async fn new() -> Result<Self> {
         // Find an unused port.
         let port = portpicker::pick_unused_port().ok_or_else(|| anyhow::anyhow!("no port available"))?;
-        let config = crate::core::Server {
+        let config = crate::Server {
             address: format!("127.0.0.1:{}", port),
-            spec_file: None,
-            do_cron: false,
+            discord_token: Default::default(),
+            discord_client_id: Default::default(),
+            discord_client_secret: Default::default(),
+            discord_redirect_uri: Default::default(),
         };
-
-        let env = common::types::Environment::Development;
 
         // Create the server in debug mode.
         let (server, _context) = crate::server::create_server(
             &config,
-            env,
             &crate::Opts {
                 debug: true,
                 json: false,
-                subcmd: crate::core::SubCommand::Server(config.clone()),
+                subcmd: crate::SubCommand::Server(config.clone()),
             },
         )
         .await?;
@@ -135,7 +134,6 @@ fn test_openapi() {
 
 #[test_context(ServerContext)]
 #[tokio::test]
-#[serial_test::serial]
 async fn test_root(ctx: &mut ServerContext) {
     let response = ctx.client.get(&ctx.get_url("")).send().await.unwrap();
 
@@ -149,7 +147,6 @@ async fn test_root(ctx: &mut ServerContext) {
 
 #[test_context(ServerContext)]
 #[tokio::test]
-#[serial_test::serial]
 async fn test_ping(ctx: &mut ServerContext) {
     let response = ctx.client.get(&ctx.get_url("ping")).send().await.unwrap();
 

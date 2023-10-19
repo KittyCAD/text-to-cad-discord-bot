@@ -5,6 +5,8 @@
 #[macro_use]
 mod enclose;
 mod server;
+#[cfg(test)]
+mod tests;
 
 use std::{collections::HashSet, env, sync::Arc};
 
@@ -102,6 +104,22 @@ pub struct Server {
     /// IP address and port that the server should listen
     #[clap(short, long, default_value = "0.0.0.0:8080")]
     pub address: String,
+
+    /// The discord bot token to use.
+    #[clap(short, long, env = "DISCORD_TOKEN")]
+    pub discord_token: String,
+
+    /// The discord client ID to use.
+    #[clap(short, long, env = "DISCORD_CLIENT_ID")]
+    pub discord_client_id: String,
+
+    /// The discord client secret to use.
+    #[clap(short, long, env = "DISCORD_CLIENT_SECRET")]
+    pub discord_client_secret: String,
+
+    /// The discord redirect URI to use.
+    #[clap(short, long, env = "DISCORD_REDIRECT_URI")]
+    pub discord_redirect_uri: String,
 }
 
 // A container type is created for inserting into the Client's `data`, which

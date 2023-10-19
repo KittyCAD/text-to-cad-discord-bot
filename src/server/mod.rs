@@ -19,6 +19,12 @@ pub fn create_api_description() -> Result<ApiDescription<Arc<Context>>> {
         api.register(crate::server::endpoints::ping).unwrap();
         api.register(crate::server::endpoints::api_get_schema).unwrap();
 
+        /* Discord OAuth2 */
+        api.register(crate::server::endpoints::listen_auth_discord_callback)
+            .unwrap();
+        api.register(crate::server::endpoints::listen_auth_discord_consent)
+            .unwrap();
+
         Ok(())
     }
 
@@ -46,7 +52,7 @@ pub async fn create_server(
         default_handler_task_mode: dropshot::HandlerTaskMode::CancelOnDisconnect,
     };
 
-    let api_context = Arc::new(Context::new(schema, opts.create_logger()).await?);
+    let api_context = Arc::new(Context::new(schema, opts.create_logger(), s.clone()).await?);
 
     let server = HttpServerStarter::new(&config_dropshot, api, api_context.clone(), &opts.create_logger())
         .map_err(|error| anyhow!("failed to create server: {}", error))?
