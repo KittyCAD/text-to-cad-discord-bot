@@ -363,6 +363,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 // They're made in the pattern: `#name_GROUP` for the group instance and `#name_GROUP_OPTIONS`.
                 // #name is turned all uppercase
                 .help(&BOT_HELP)
+                .group(&GENERAL_GROUP)
                 .group(&OWNER_GROUP);
 
             // For this example to run properly, the "Presence Intent" and "Server Members Intent"
