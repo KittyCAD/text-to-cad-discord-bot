@@ -132,11 +132,11 @@ pub struct Server {
 /// A subcommand for converting a gltf file to an image.
 #[derive(Parser, Clone, Debug)]
 pub struct ConvertImage {
-    // Path to the gltf file.
+    /// Path to the gltf file.
     #[clap(short, long)]
     pub gltf_path: std::path::PathBuf,
 
-    // Path to the output image file.
+    /// Path to the output image file.
     #[clap(short, long)]
     pub image_path: std::path::PathBuf,
 }
