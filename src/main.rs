@@ -112,6 +112,7 @@ impl EventHandler for Handler {
             println!("Received command interaction: {:#?}", command);
 
             let content = match command.data.name.as_str() {
+                "design" => commands::design::run(&command.data.options),
                 "ping" => commands::ping::run(&command.data.options),
                 _ => "not implemented :(".to_string(),
             };
