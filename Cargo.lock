@@ -3642,6 +3642,7 @@ dependencies = [
  "three-d-asset",
  "tokio",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

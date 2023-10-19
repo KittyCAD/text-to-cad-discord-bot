@@ -25,6 +25,7 @@ three-d = { version = "0.16.1", features = ["headless", "image"] }
 three-d-asset = { version = "0.6.0", features = ["png", "gltf"] }
 tokio = { version = "1.33.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.17", features = ["registry", "std", "fmt", "smallvec", "ansi", "tracing-log", "json"] }
+uuid = { version = "1.5.0", features = ["v4", "serde"] }
 
 [dev-dependencies]
 async-trait = "0.1.74"

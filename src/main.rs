@@ -503,6 +503,87 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .get::<KittycadApi>()
         .ok_or(anyhow::anyhow!("Kittycad client not found"))?;
 
+    // This is CPU bound so let's force it on another thread.
+    let (image_bytes, string_reply, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
+
+    if let Some(string_reply) = string_reply {
+        msg.reply(ctx, &string_reply).await?;
+        // Return early.
+        return Ok(());
+    }
+
+    let Some(model) = model else {
+        anyhow::bail!("No model found");
+    };
+
+    // Save the image to a temp file.
+    let image_file = format!("{}.png", model.id);
+    let image_path = std::env::temp_dir().join(&image_file);
+    // Write the bytes to the file.
+    std::fs::write(&image_path, &image_bytes)?;
+
+    // Show that we are done working on it.
+    msg.react(ctx, '👍').await?;
+
+    let our_msg = msg
+        .author
+        .direct_message(&ctx.http, |m| {
+            m.content(msg.author.mention())
+                .embed(|e| {
+                    e.title(prompt)
+                        .image(&format!("attachment://{}", image_file))
+                        // Thumbs up or down emoji.
+                        .footer(|f| f.text("Add a 👍 or 👎 to this message to give feedback."))
+                        // Add a timestamp for the current time
+                        // This also accepts a rfc3339 Timestamp
+                        .timestamp(serenity::model::Timestamp::now())
+                })
+                .add_file(&image_path)
+        })
+        .await?;
+
+    // Wait for feedback to the model based on emoji reaction.
+    let reaction = our_msg
+        .await_reaction(ctx)
+        .author_id(msg.author.id)
+        .added(true)
+        .timeout(std::time::Duration::from_secs(120))
+        .filter(|reaction| {
+            reaction.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string())
+                || reaction.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string())
+        })
+        .await;
+
+    if let Some(feedback) = reaction {
+        if let serenity::collector::reaction_collector::ReactionAction::Added(added) = feedback.borrow() {
+            let reaction = if added.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string()) {
+                Some(kittycad::types::AiFeedback::ThumbsUp)
+            } else if added.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string()) {
+                Some(kittycad::types::AiFeedback::ThumbsDown)
+            } else {
+                None
+            };
+
+            if let Some(ai_reaction) = reaction {
+                // Send our feedback on the model.
+                kittycad_client
+                    .ai()
+                    .create_text_to_cad_model_feedback(ai_reaction, model.id)
+                    .await?;
+            }
+        }
+    }
+
+    // TODO: add export button.
+
+    Ok(())
+}
+
+async fn get_image_bytes_for_prompt(
+    logger: &slog::Logger,
+    kittycad_client: &kittycad::Client,
+    prompt: &str,
+) -> Result<(Vec<u8>, Option<String>, Option<kittycad::types::TextToCad>)> {
     slog::info!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
@@ -572,28 +653,34 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         }
 
         status = model.status.clone();
+
+        // Wait for a bit before polling again.
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 
     // If the model failed we will want to tell the user.
     if model.status == kittycad::types::ApiCallStatus::Failed {
         if let Some(error) = model.error {
             slog::warn!(logger, "Design failed: {}", error);
-            msg.reply(ctx, format!(":( Your prompt returned an error: {}", error))
-                .await?;
+            return Ok((
+                vec![],
+                Some(format!(":( Your prompt returned an error: {}", error)),
+                None,
+            ));
         } else {
             slog::warn!(logger, "Design failed: {:?}", model);
-            msg.reply(ctx, "Your prompt returned an error, but no error message. :(")
-                .await?;
+            return Ok((
+                vec![],
+                Some("Your prompt returned an error, but no error message. :(".to_string()),
+                None,
+            ));
         }
-
-        return Ok(());
     }
 
     if model.status != kittycad::types::ApiCallStatus::Completed {
         slog::warn!(logger, "Design timed out: {:?}", model);
 
-        msg.reply(ctx, "Your prompt timed out. :(").await?;
-        return Ok(());
+        return Ok((vec![], Some("Your prompt timed out. :(".to_string()), None));
     }
 
     // Okay, we successfully got a model!
@@ -601,17 +688,20 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
 
     // Get the gltf bytes.
     let mut gltf_bytes = vec![];
-    if let Some(outputs) = model.outputs {
+    if let Some(outputs) = &model.outputs {
         for (key, value) in outputs {
             if key.ends_with(".gltf") {
-                gltf_bytes = value.0;
+                gltf_bytes = value.0.clone();
                 break;
             }
         }
     } else {
         slog::warn!(logger, "Design completed, but no gltf outputs: {:?}", model);
-        msg.reply(ctx, "Your design completed, but no gltf outputs were found. :(")
-            .await?;
+        return Ok((
+            vec![],
+            Some("Your design completed, but no gltf outputs were found. :(".to_string()),
+            None,
+        ));
     }
 
     // This is CPU bound so let's force it on another thread.
@@ -620,65 +710,8 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         crate::image::model_to_image(&gltf_bytes)
     })
     .await??;
-    // Save the image to a temp file.
-    let image_file = format!("{}.png", model.id);
-    let image_path = std::env::temp_dir().join(&image_file);
 
     slog::info!(logger, "Got image bytes: {}", image_bytes.len());
 
-    // Show that we are done working on it.
-    msg.react(ctx, '👍').await?;
-
-    let our_msg = msg
-        .author
-        .direct_message(&ctx.http, |m| {
-            m.content(msg.author.mention())
-                .embed(|e| {
-                    e.title(model.prompt)
-                        .image(&format!("attachment://{}", image_file))
-                        // Thumbs up or down emoji.
-                        .footer(|f| f.text("Add a 👍 or 👎 to this message to give feedback."))
-                        // Add a timestamp for the current time
-                        // This also accepts a rfc3339 Timestamp
-                        .timestamp(serenity::model::Timestamp::now())
-                })
-                .add_file(&image_path)
-        })
-        .await?;
-
-    // Wait for feedback to the model based on emoji reaction.
-    let reaction = our_msg
-        .await_reaction(ctx)
-        .author_id(msg.author.id)
-        .added(true)
-        .timeout(std::time::Duration::from_secs(120))
-        .filter(|reaction| {
-            reaction.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string())
-                || reaction.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string())
-        })
-        .await;
-
-    if let Some(feedback) = reaction {
-        if let serenity::collector::reaction_collector::ReactionAction::Added(added) = feedback.borrow() {
-            let reaction = if added.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string()) {
-                Some(kittycad::types::AiFeedback::ThumbsUp)
-            } else if added.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string()) {
-                Some(kittycad::types::AiFeedback::ThumbsDown)
-            } else {
-                None
-            };
-
-            if let Some(ai_reaction) = reaction {
-                // Send our feedback on the model.
-                kittycad_client
-                    .ai()
-                    .create_text_to_cad_model_feedback(ai_reaction, model.id)
-                    .await?;
-            }
-        }
-    }
-
-    // TODO: add export button.
-
-    Ok(())
+    Ok((image_bytes, None, Some(model)))
 }
