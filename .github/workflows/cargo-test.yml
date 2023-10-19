@@ -39,12 +39,13 @@ jobs:
         shell: bash
         run: |
           cargo llvm-cov nextest --all --lcov --output-path lcov.info --test-threads=1 --no-fail-fast
-
-          #- name: Upload to codecov.io
-          #uses: codecov/codecov-action@v3
-          #with:
-          #token: ${{secrets.CODECOV_TOKEN}}
-          #fail_ci_if_error: true
-          #flags: unittests
-          #verbose: true
-          #files: lcov.info
+        env:
+          KITTYCAD_API_TOKEN: ${{secrets.KITTYCAD_API_TOKEN}}
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          fail_ci_if_error: true
+          flags: unittests
+          verbose: true
+          files: lcov.info

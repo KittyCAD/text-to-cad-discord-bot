@@ -715,3 +715,29 @@ async fn get_image_bytes_for_prompt(
 
     Ok((image_bytes, None, Some(model)))
 }
+
+#[cfg(test)]
+mod test {
+    use slog::Drain;
+
+    use crate::get_image_bytes_for_prompt;
+
+    #[tokio::test]
+    async fn test_get_image_from_prompt() {
+        let logger = {
+            let decorator = slog_term::PlainDecorator::new(slog_term::TestStdoutWriter);
+            let drain = std::sync::Mutex::new(slog_term::FullFormat::new(decorator).build()).fuse();
+
+            slog::Logger::root(drain, slog::o!())
+        };
+        let mut kittycad_client = kittycad::Client::new_from_env();
+        kittycad_client.set_base_url("https://api.dev.kittycad.io");
+
+        let (image_bytes, string_reply, model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
+            .await
+            .unwrap();
+        assert!(string_reply.is_none());
+        assert!(model.is_some());
+        assert!(!image_bytes.is_empty());
+    }
+}
