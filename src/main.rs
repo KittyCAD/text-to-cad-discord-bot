@@ -2,23 +2,23 @@
 
 #![deny(missing_docs)]
 
-mod commands;
-
-use std::env;
+use std::{collections::HashSet, env, sync::Arc};
 
 use anyhow::{bail, Result};
 use clap::Parser;
 use serenity::{
     async_trait,
+    client::bridge::gateway::{ShardId, ShardManager},
     framework::standard::{
-        macros::{command, group},
-        CommandResult, StandardFramework,
+        help_commands,
+        macros::{check, command, group, help, hook},
+        Args, CommandGroup, CommandOptions, CommandResult, DispatchError, HelpOptions, Reason, StandardFramework,
     },
+    http::Http,
     model::{
-        application::interaction::{Interaction, InteractionResponseType},
         channel::Message,
-        gateway::Ready,
-        id::GuildId,
+        gateway::{GatewayIntents, Ready},
+        id::UserId,
     },
     prelude::*,
 };
@@ -99,55 +99,93 @@ pub struct Server {
     pub port: i32,
 }
 
-#[group]
-#[commands(ping)]
-struct General;
+// A container type is created for inserting into the Client's `data`, which
+// allows for data to be accessible across all events and framework commands, or
+// anywhere else that has a copy of the `data` Arc.
+struct ShardManagerContainer;
+
+impl TypeMapKey for ShardManagerContainer {
+    type Value = Arc<Mutex<ShardManager>>;
+}
 
 struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = interaction {
-            println!("Received command interaction: {:#?}", command);
-
-            let content = match command.data.name.as_str() {
-                "design" => commands::design::run(&command.data.options),
-                "ping" => commands::ping::run(&command.data.options),
-                _ => "not implemented :(".to_string(),
-            };
-
-            if let Err(why) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content))
-                })
-                .await
-            {
-                println!("Cannot respond to slash command: {}", why);
-            }
-        }
-    }
-
-    async fn ready(&self, ctx: Context, ready: Ready) {
+    async fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+    }
+}
 
-        let guild_id = GuildId(
-            env::var("GUILD_ID")
-                .expect("Expected GUILD_ID in environment")
-                .parse()
-                .expect("GUILD_ID must be an integer"),
-        );
+#[group]
+#[commands(about, ping, latency)]
+struct General;
 
-        let commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
-            commands
-                .create_application_command(|command| commands::design::register(command))
-                .create_application_command(|command| commands::ping::register(command))
-        })
-        .await;
+#[group]
+#[owners_only]
+// Limit all commands to be guild-restricted.
+#[only_in(guilds)]
+// Summary only appears when listing multiple groups.
+#[summary = "Commands for server owners"]
+struct Owner;
 
-        println!("I now have the following guild slash commands: {:#?}", commands);
+// The framework provides two built-in help commands for you to use.
+// But you can also make your own customized help command that forwards
+// to the behaviour of either of them.
+#[help]
+async fn bot_help(
+    context: &Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>,
+) -> CommandResult {
+    let _ = help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    Ok(())
+}
+
+#[hook]
+async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
+    println!("Got command '{}' by user '{}'", command_name, msg.author.name);
+
+    true // if `before` returns false, command processing doesn't happen.
+}
+
+#[hook]
+async fn after(_ctx: &Context, _msg: &Message, command_name: &str, command_result: CommandResult) {
+    match command_result {
+        Ok(()) => println!("Processed command '{}'", command_name),
+        Err(why) => println!("Command '{}' returned error {:?}", command_name, why),
+    }
+}
+
+#[hook]
+async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &str) {
+    println!("Could not find command named '{}'", unknown_command_name);
+}
+
+#[hook]
+async fn normal_message(_ctx: &Context, msg: &Message) {
+    println!("Message is not a command '{}'", msg.content);
+}
+
+#[hook]
+async fn delay_action(ctx: &Context, msg: &Message) {
+    // You may want to handle a Discord rate limit if this fails.
+    let _ = msg.react(ctx, '⏱').await;
+}
+
+#[hook]
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, _command_name: &str) {
+    if let DispatchError::Ratelimited(info) = error {
+        // We notify them only once.
+        if info.is_first_try {
+            let _ = msg
+                .channel_id
+                .say(&ctx.http, &format!("Try this again in {} seconds.", info.as_secs()))
+                .await;
+        }
     }
 }
 
@@ -209,17 +247,82 @@ async fn main() -> Result<()> {
 async fn run_cmd(opts: &Opts) -> Result<()> {
     match &opts.subcmd {
         SubCommand::Server(_s) => {
-            let framework = StandardFramework::new()
-                .configure(|c| c.prefix("~")) // set the bot's prefix to "~"
-                .group(&GENERAL_GROUP);
-
             // Login with a bot token from the environment
             let token = env::var("DISCORD_TOKEN").expect("expected DISCORD_TOKEN in env");
-            let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
-            let mut client = Client::builder(token, intents)
+
+            let http = Http::new(&token);
+
+            // We will fetch your bot's owners and id
+            let info = http.get_current_application_info().await?;
+            let mut owners = HashSet::new();
+            if let Some(team) = info.team {
+                owners.insert(team.owner_user_id);
+            } else {
+                owners.insert(info.owner.id);
+            }
+            let bot_id = http.get_current_user().await?;
+
+            // Set up the framework.
+            let framework = StandardFramework::new()
+                .configure(|c| {
+                    c.with_whitespace(true)
+                        .on_mention(Some(bot_id.id))
+                        .prefix("~")
+                        // In this case, if "," would be first, a message would never
+                        // be delimited at ", ", forcing you to trim your arguments if you
+                        // want to avoid whitespaces at the start of each.
+                        .delimiters(vec![", ", ","])
+                        // Sets the bot's owners. These will be used for commands that
+                        // are owners only.
+                        .owners(owners)
+                })
+                // Set a function to be called prior to each command execution. This
+                // provides the context of the command, the message that was received,
+                // and the full name of the command that will be called.
+                //
+                // Avoid using this to determine whether a specific command should be
+                // executed. Instead, prefer using the `#[check]` macro which
+                // gives you this functionality.
+                //
+                // **Note**: Async closures are unstable, you may use them in your
+                // application if you are fine using nightly Rust.
+                // If not, we need to provide the function identifiers to the
+                // hook-functions (before, after, normal, ...).
+                .before(before)
+                // Similar to `before`, except will be called directly _after_
+                // command execution.
+                .after(after)
+                // Set a function that's called whenever an attempted command-call's
+                // command could not be found.
+                .unrecognised_command(unknown_command)
+                // Set a function that's called whenever a message is not a command.
+                .normal_message(normal_message)
+                // Set a function that's called whenever a command's execution didn't complete for one
+                // reason or another. For example, when a user has exceeded a rate-limit or a command
+                // can only be performed by the bot owner.
+                .on_dispatch_error(dispatch_error)
+                // The `#[group]` macro generates `static` instances of the options set for the group.
+                // They're made in the pattern: `#name_GROUP` for the group instance and `#name_GROUP_OPTIONS`.
+                // #name is turned all uppercase
+                .help(&BOT_HELP)
+                .group(&OWNER_GROUP);
+
+            // For this example to run properly, the "Presence Intent" and "Server Members Intent"
+            // options need to be enabled.
+            // These are needed so the `required_permissions` macro works on the commands that need to
+            // use it.
+            // You will need to enable these 2 options on the bot application, and possibly wait up to 5
+            // minutes.
+            let intents = GatewayIntents::all();
+            let mut client = Client::builder(&token, intents)
                 .event_handler(Handler)
                 .framework(framework)
                 .await?;
+
+            {
+                let mut data = client.data.write().await;
+                data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+            }
 
             // start listening for events by starting a single shard
             client.start().await?
@@ -229,9 +332,91 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
     Ok(())
 }
 
+// A function which acts as a "check", to determine whether to call a command.
+//
+// In this case, this command checks to ensure you are the owner of the message
+// in order for the command to be executed. If the check fails, the command is
+// not called.
+#[check]
+#[name = "Owner"]
+async fn owner_check(_: &Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> Result<(), Reason> {
+    // Replace 7 with your ID to make this check pass.
+    //
+    // 1. If you want to pass a reason alongside failure you can do:
+    // `Reason::User("Lacked admin permission.".to_string())`,
+    //
+    // 2. If you want to mark it as something you want to log only:
+    // `Reason::Log("User lacked admin permission.".to_string())`,
+    //
+    // 3. If the check's failure origin is unknown you can mark it as such:
+    // `Reason::Unknown`
+    //
+    // 4. If you want log for your system and for the user, use:
+    // `Reason::UserAndLog { user, log }`
+    if msg.author.id != 7 {
+        return Err(Reason::User("Lacked owner permission".to_string()));
+    }
+
+    Ok(())
+}
+
 #[command]
+async fn about(ctx: &Context, msg: &Message) -> CommandResult {
+    msg.channel_id
+        .say(
+            &ctx.http,
+            "A discord bot to play with the KittyCAD Text to CAD API. : )",
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+// Limit command usage to guilds.
+#[only_in(guilds)]
+#[checks(Owner)]
+async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
+    // The shard manager is an interface for mutating, stopping, restarting, and
+    // retrieving information about shards.
+    let data = ctx.data.read().await;
+
+    let shard_manager = match data.get::<ShardManagerContainer>() {
+        Some(v) => v,
+        None => {
+            msg.reply(ctx, "There was a problem getting the shard manager").await?;
+
+            return Ok(());
+        }
+    };
+
+    let manager = shard_manager.lock().await;
+    let runners = manager.runners.lock().await;
+
+    // Shards are backed by a "shard runner" responsible for processing events
+    // over the shard, so we'll get the information about the shard runner for
+    // the shard this command was sent over.
+    let runner = match runners.get(&ShardId(ctx.shard_id)) {
+        Some(runner) => runner,
+        None => {
+            msg.reply(ctx, "No shard found").await?;
+
+            return Ok(());
+        }
+    };
+
+    msg.reply(ctx, &format!("The shard latency is {:?}", runner.latency))
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+// Limit command usage to guilds.
+#[only_in(guilds)]
+#[checks(Owner)]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(ctx, "Pong!").await?;
+    msg.channel_id.say(&ctx.http, "Pong! : )").await?;
 
     Ok(())
 }

@@ -10,7 +10,7 @@ clap = { version = "4.4.4", features = ["cargo", "derive", "env", "unicode"] }
 kittycad = "0.2.34"
 lazy_static = "1.4.0"
 log = { version = "0.4.20", features = ["serde"] }
-serenity = "0.11.6"
+serenity = {version = "0.11.6", features = ["framework", "standard_framework"]}
 slog = "2.7.0"
 slog-async = "2.8.0"
 slog-json = "2.6.1"
