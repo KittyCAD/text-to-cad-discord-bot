@@ -622,7 +622,7 @@ async fn get_image_bytes_for_prompt(
     // more than enough!
     while status != kittycad::types::ApiCallStatus::Completed
         && status != kittycad::types::ApiCallStatus::Failed
-        && start.elapsed().as_secs() < 60 * 5
+        && start.elapsed().as_secs() < 60 * 10
     {
         slog::info!(logger, "Polling for design status: {}", status);
 
