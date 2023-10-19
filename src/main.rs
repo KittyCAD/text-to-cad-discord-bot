@@ -106,19 +106,19 @@ pub struct Server {
     pub address: String,
 
     /// The discord bot token to use.
-    #[clap(short, long, env = "DISCORD_TOKEN")]
+    #[clap(long, env = "DISCORD_TOKEN")]
     pub discord_token: String,
 
     /// The discord client ID to use.
-    #[clap(short, long, env = "DISCORD_CLIENT_ID")]
+    #[clap(long, env = "DISCORD_CLIENT_ID")]
     pub discord_client_id: String,
 
     /// The discord client secret to use.
-    #[clap(short, long, env = "DISCORD_CLIENT_SECRET")]
+    #[clap(long, env = "DISCORD_CLIENT_SECRET")]
     pub discord_client_secret: String,
 
     /// The discord redirect URI to use.
-    #[clap(short, long, env = "DISCORD_REDIRECT_URI")]
+    #[clap(long, env = "DISCORD_REDIRECT_URI")]
     pub discord_redirect_uri: String,
 }
 
