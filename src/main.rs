@@ -490,6 +490,10 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     match args.single_quoted::<String>() {
         Ok(x) => {
+            // React to the message that we are working on it.
+            // We want to use unicode eyes.
+            msg.react(ctx, '👀').await?;
+
             let settings = if let Some(guild_id) = msg.guild_id {
                 // By default roles, users, and channel mentions are cleaned.
                 ContentSafeOptions::default()
