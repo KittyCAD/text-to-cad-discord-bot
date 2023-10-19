@@ -74,7 +74,7 @@ pub fn get_openapi(api: &mut ApiDescription<Arc<Context>>) -> Result<serde_json:
 }
 
 pub async fn server(s: &crate::Server, opts: &crate::Opts) -> Result<()> {
-    let (server, api_context) = create_server(s, opts).await?;
+    let (server, _api_context) = create_server(s, opts).await?;
 
     // For Cloud run & ctrl+c, shutdown gracefully.
     // "The main process inside the container will receive SIGTERM, and after a grace period,
@@ -82,7 +82,7 @@ pub async fn server(s: &crate::Server, opts: &crate::Opts) -> Result<()> {
     // Regsitering SIGKILL here will panic at runtime, so let's avoid that.
     let mut signals = Signals::new([SIGINT, SIGTERM])?;
 
-    tokio::spawn(enclose! { (api_context) async move {
+    tokio::spawn(async move {
         for sig in signals.forever() {
             info!("received signal: {:?}", sig);
             info!("triggering cleanup...");
@@ -91,7 +91,7 @@ pub async fn server(s: &crate::Server, opts: &crate::Opts) -> Result<()> {
             info!("all clean, exiting!");
             std::process::exit(0);
         }
-    }});
+    });
 
     server.await.map_err(|error| anyhow!("server failed: {}", error))?;
 
