@@ -2,10 +2,16 @@
 name = "text-to-cad-discord-bot"
 version = "0.1.0"
 edition = "2021"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "4.4.4", features = ["cargo", "derive", "env", "unicode"] }
 kittycad = "0.2.34"
+log = { version = "0.4.20", features = ["serde"] }
 serenity = "0.11.6"
+slog = "2.7.0"
+slog-async = "2.8.0"
+slog-json = "2.6.1"
+slog-term = "2.9.0"
 tokio = { version = "1.33.0", features = ["full"] }
+tracing-subscriber = { version = "0.3.17", features = ["registry", "std", "fmt", "smallvec", "ansi", "tracing-log", "json"] }
