@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 
-fn model_to_image() -> Result<()> {
+pub fn model_to_image() -> Result<()> {
     let viewport = three_d::Viewport::new_at_origo(1280, 720);
 
     // Create a headless graphics context
