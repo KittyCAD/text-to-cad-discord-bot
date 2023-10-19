@@ -2,13 +2,12 @@
 
 #![deny(missing_docs)]
 
-use anyhow::{bail, Result};
-use clap::Parser;
-use slog::Drain;
-use tracing_subscriber::{prelude::*, Layer};
+mod commands;
 
 use std::env;
 
+use anyhow::{bail, Result};
+use clap::Parser;
 use serenity::{
     async_trait,
     framework::standard::{
@@ -18,6 +17,8 @@ use serenity::{
     model::channel::Message,
     prelude::*,
 };
+use slog::Drain;
+use tracing_subscriber::{prelude::*, Layer};
 
 lazy_static::lazy_static! {
 /// Initialize the logger.
