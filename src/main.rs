@@ -507,7 +507,10 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             if let Err(e) = run_text_to_cad_prompt(ctx, msg, &content).await {
                 slog::warn!(crate::LOGGER, "Error running text to cad prompt: {:?}", e);
-                msg.reply(ctx, &format!(":( There was an error: {:?}", e)).await?;
+                let message = format!(":( There was an error: {:?}", e);
+                // TRuncate the message to the first 2000 characters.
+                let message = &message[..std::cmp::min(message.len(), 2000)];
+                msg.reply(ctx, &message).await?;
             }
 
             return Ok(());
