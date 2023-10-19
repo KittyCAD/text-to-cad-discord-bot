@@ -644,11 +644,32 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         crate::image::model_to_image(&gltf_bytes)
     })
     .await??;
+    // Save the image to a temp file.
+    let image_file = format!("{}.png", model.id);
+    let image_path = std::env::temp_dir().join(&image_file);
 
     slog::info!(logger, "Got image bytes: {}", image_bytes.len());
 
-    // TODO: do something with it.
-    msg.reply(ctx, "Your design completed! :)").await?;
+    // Show that we are done working on it.
+    msg.react(ctx, '👍').await?;
+
+    msg.author
+        .direct_message(&ctx.http, |m| {
+            m.content(msg.author.mention())
+                .embed(|e| {
+                    e.title(model.prompt)
+                        .image(&format!("attachment://{}", image_file))
+                        // Thumbs up or down emoji.
+                        .footer(|f| f.text("Add a 👍 or 👎 to this message to give feedback."))
+                        // Add a timestamp for the current time
+                        // This also accepts a rfc3339 Timestamp
+                        .timestamp(serenity::model::Timestamp::now())
+                })
+                .add_file(&image_path)
+        })
+        .await?;
+
+    // TODO: add feedback to the model based on emoji reactions.
 
     Ok(())
 }
