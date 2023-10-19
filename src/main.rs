@@ -2,6 +2,10 @@
 
 #![deny(missing_docs)]
 
+#[macro_use]
+mod enclose;
+mod server;
+
 use std::{collections::HashSet, env, sync::Arc};
 
 use anyhow::{bail, Result};
@@ -95,9 +99,9 @@ pub enum SubCommand {
 /// A subcommand for running the server.
 #[derive(Parser, Clone, Debug)]
 pub struct Server {
-    /// Port that the server should listen on.
-    #[clap(long, default_value = "8080")]
-    pub port: i32,
+    /// IP address and port that the server should listen
+    #[clap(short, long, default_value = "0.0.0.0:8080")]
+    pub address: String,
 }
 
 // A container type is created for inserting into the Client's `data`, which
@@ -247,7 +251,13 @@ async fn main() -> Result<()> {
 
 async fn run_cmd(opts: &Opts) -> Result<()> {
     match &opts.subcmd {
-        SubCommand::Server(_s) => {
+        SubCommand::Server(s) => {
+            // Run the dropshot server in the background.
+            let handle = tokio::spawn(enclose! { (s, opts) async move {
+                crate::server::server(&s, &opts).await?;
+                Ok::<(), anyhow::Error>(())
+            }});
+
             // Login with a bot token from the environment
             let token = env::var("DISCORD_TOKEN").expect("expected DISCORD_TOKEN in env");
 
@@ -326,7 +336,11 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             }
 
             // start listening for events by starting a single shard
-            client.start().await?
+            client.start().await?;
+
+            // If we get here, the client has disconnected cleanly.
+            // So we should abort our handle for our server.
+            handle.abort();
         }
     }
 
