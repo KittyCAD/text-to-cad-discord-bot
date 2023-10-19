@@ -755,8 +755,6 @@ fn gltf_to_image(contents: &[u8]) -> Result<std::path::PathBuf> {
         .arg(&image_path)
         .output()?;
 
-    println!("status: {}", output.status);
-
     // Remove the gltf file.
     std::fs::remove_file(&gltf_path)?;
 
