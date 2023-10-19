@@ -8,15 +8,12 @@ pub fn model_to_image(gltf_bytes: &[u8]) -> Result<Vec<u8>> {
     let mut raw_asset = three_d_asset::io::RawAssets::new();
     raw_asset.insert("model.gltf", gltf_bytes.to_vec());
 
-    println!("Creating viewport...");
     let viewport = three_d::Viewport::new_at_origo(1280, 720);
 
     // Create a headless graphics context
-    println!("Creating context...");
     let context = three_d::HeadlessContext::new()?;
 
     // Create a camera
-    println!("Creating camera...");
     let camera = three_d::Camera::new_perspective(
         viewport,
         three_d::vec3(0.0, 0.0, 2.0),
@@ -26,8 +23,6 @@ pub fn model_to_image(gltf_bytes: &[u8]) -> Result<Vec<u8>> {
         0.1,
         10.0,
     );
-
-    println!("Loading model...");
 
     let mut cpu_model: three_d::CpuModel = raw_asset.deserialize("")?; // Empty string implies load the first.
     cpu_model.geometries.iter_mut().for_each(|m| m.compute_tangents());

@@ -704,16 +704,17 @@ async fn get_image_bytes_for_prompt(
         ));
     }
 
+    // TODO: fix this so it can run on any thread.
     // This is CPU bound so let's force it on another thread.
-    let image_bytes = tokio::task::spawn_blocking(move || {
+    /*let image_bytes = tokio::task::spawn_blocking(move || {
         // Convert the gltf bytes into an image.
         crate::image::model_to_image(&gltf_bytes)
     })
     .await??;
 
-    slog::info!(logger, "Got image bytes: {}", image_bytes.len());
+    slog::info!(logger, "Got image bytes: {}", image_bytes.len());*/
 
-    Ok((image_bytes, None, Some(model)))
+    Ok((vec![], None, Some(model)))
 }
 
 #[cfg(test)]
@@ -738,6 +739,6 @@ mod test {
             .unwrap();
         assert!(string_reply.is_none());
         assert!(model.is_some());
-        assert!(!image_bytes.is_empty());
+        //assert!(!image_bytes.is_empty());
     }
 }
