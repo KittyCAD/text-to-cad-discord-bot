@@ -752,7 +752,7 @@ fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::Pa
     std::fs::write(&gltf_path, contents)?;
 
     // Re-execute ourselves to convert the gltf file to an image.
-    let output = std::process::Command::new(std::env::current_exe()?)
+    let output = std::process::Command::new(path_to_self()?)
         .arg("convert-image")
         .arg("--gltf-path")
         .arg(&gltf_path)
@@ -777,13 +777,26 @@ fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::Pa
 }
 
 #[cfg(test)]
+fn path_to_self() -> Result<std::path::PathBuf> {
+    let path = std::env::current_dir()?
+        .join("target")
+        .join("debug")
+        .join("text-to-cad-discord-bot");
+    Ok(path)
+}
+
+#[cfg(not(test))]
+fn path_to_self() -> Result<std::path::PathBuf> {
+    Ok(std::env::current_exe()?)
+}
+
+#[cfg(test)]
 mod test {
     use slog::Drain;
 
     use crate::get_image_bytes_for_prompt;
 
     #[tokio::test]
-    #[ignore] // since it cannot find the binary
     async fn test_get_image_from_prompt() {
         let logger = {
             let decorator = slog_term::PlainDecorator::new(slog_term::TestStdoutWriter);
