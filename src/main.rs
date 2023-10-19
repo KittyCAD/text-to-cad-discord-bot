@@ -821,5 +821,7 @@ mod test {
         // Read the contents of the file.
         let image_bytes = std::fs::read(&image_file).unwrap();
         assert!(!image_bytes.is_empty());
+
+        std::fs::remove_file(&image_file).unwrap();
     }
 }
