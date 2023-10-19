@@ -487,6 +487,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Generate a CAD model from a text prompt."]
+#[checks(Owner)]
 async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     match args.single_quoted::<String>() {
         Ok(x) => {
