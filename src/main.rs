@@ -9,7 +9,7 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::HashSet, sync::Arc};
+use std::{borrow::Borrow, collections::HashSet, sync::Arc};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -653,7 +653,8 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     // Show that we are done working on it.
     msg.react(ctx, '👍').await?;
 
-    msg.author
+    let our_msg = msg
+        .author
         .direct_message(&ctx.http, |m| {
             m.content(msg.author.mention())
                 .embed(|e| {
@@ -669,7 +670,37 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         })
         .await?;
 
-    // TODO: add feedback to the model based on emoji reactions.
+    // Wait for feedback to the model based on emoji reaction.
+    let reaction = our_msg
+        .await_reaction(ctx)
+        .author_id(msg.author.id)
+        .added(true)
+        .timeout(std::time::Duration::from_secs(120))
+        .filter(|reaction| {
+            reaction.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string())
+                || reaction.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string())
+        })
+        .await;
+
+    if let Some(feedback) = reaction {
+        if let serenity::collector::reaction_collector::ReactionAction::Added(added) = feedback.borrow() {
+            let reaction = if added.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string()) {
+                Some(kittycad::types::AiFeedback::ThumbsUp)
+            } else if added.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string()) {
+                Some(kittycad::types::AiFeedback::ThumbsDown)
+            } else {
+                None
+            };
+
+            if let Some(ai_reaction) = reaction {
+                // Send our feedback on the model.
+                kittycad_client
+                    .ai()
+                    .create_text_to_cad_model_feedback(ai_reaction, model.id)
+                    .await?;
+            }
+        }
+    }
 
     Ok(())
 }

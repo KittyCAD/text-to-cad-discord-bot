@@ -3208,6 +3208,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "percent-encoding",
  "reqwest",
+ "rustversion",
  "serde",
  "serde-value",
  "serde_json",
