@@ -35,6 +35,15 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.0
 
+      - name: Install deps
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+	            ca-certificates \
+	            libssl3 \
+              libfreetype6 \
+	            libfontconfig1 \
+	            --no-install-recommends
+
       - name: cargo test
         shell: bash
         run: |
