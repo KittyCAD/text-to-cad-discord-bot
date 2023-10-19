@@ -410,7 +410,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
         }
 
         SubCommand::ConvertImage(c) => {
-            let image_bytes = crate::image::model_to_image(&c.gltf_path)?;
+            let image_bytes = crate::image::model_to_image(&c.gltf_path).await?;
 
             std::fs::write(&c.image_path, image_bytes)?;
         }
