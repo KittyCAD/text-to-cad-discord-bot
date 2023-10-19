@@ -237,7 +237,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
     let data = ctx.data.read().await;
     let logger = data.get::<Logger>().unwrap().clone();
 
-    slog::info!(logger, "Message is not a command '{}'", msg.content);
+    slog::debug!(logger, "Message is not a command '{}'", msg.content);
 }
 
 #[hook]
@@ -333,7 +333,6 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             } else {
                 owners.insert(info.owner.id);
             }
-            slog::info!(crate::LOGGER, "Got owners: {:?}", owners);
             let bot_id = http.get_current_user().await?;
 
             // Set up the framework.
@@ -599,7 +598,7 @@ async fn get_image_bytes_for_prompt(
     kittycad_client: &kittycad::Client,
     prompt: &str,
 ) -> Result<(std::path::PathBuf, kittycad::types::TextToCad)> {
-    slog::info!(logger, "Got design request: {}", prompt);
+    slog::debug!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
     let mut model: kittycad::types::TextToCad = kittycad_client
@@ -612,7 +611,7 @@ async fn get_image_bytes_for_prompt(
         )
         .await?;
 
-    slog::info!(logger, "Got design response: {}", model);
+    slog::debug!(logger, "Got design response: {}", model);
 
     // Poll until the model is ready.
     let mut status = model.status.clone();
@@ -624,7 +623,7 @@ async fn get_image_bytes_for_prompt(
         && status != kittycad::types::ApiCallStatus::Failed
         && start.elapsed().as_secs() < 60 * 10
     {
-        slog::info!(logger, "Polling for design status: {}", status);
+        slog::debug!(logger, "Polling for design status: {}", status);
 
         // Poll for the status.
         let result = kittycad_client
@@ -691,7 +690,7 @@ async fn get_image_bytes_for_prompt(
     }
 
     // Okay, we successfully got a model!
-    slog::info!(logger, "Design completed: {:?}", model.prompt);
+    slog::debug!(logger, "Design completed: {:?}", model.prompt);
 
     // Get the gltf bytes.
     let mut gltf_bytes = vec![];
@@ -741,7 +740,7 @@ async fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::pa
         anyhow::bail!("Convert image failed: {:?}", output);
     }
 
-    slog::info!(logger, "Convert image output: {:?}", output);
+    slog::debug!(logger, "Convert image output: {:?}", output);
 
     // Remove the gltf file.
     tokio::fs::remove_file(&gltf_path).await?;
