@@ -520,8 +520,104 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
 async fn run_text_to_cad_prompt(ctx: &Context, prompt: &str) -> Result<()> {
     let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().unwrap().clone();
+    let logger = data.get::<Logger>().ok_or(anyhow::anyhow!("Logger not found"))?;
+    let kittycad_client = data
+        .get::<KittycadApi>()
+        .ok_or(anyhow::anyhow!("Kittycad client not found"))?;
 
     slog::info!(logger, "Got design request: {}", prompt);
+
+    // Create the text-to-cad request.
+    let mut model: kittycad::types::TextToCad = kittycad_client
+        .ai()
+        .create_text_to_cad(
+            kittycad::types::FileExportFormat::Gltf,
+            &kittycad::types::TextToCadCreateBody {
+                prompt: prompt.to_string(),
+            },
+        )
+        .await?;
+
+    slog::info!(logger, "Got design response: {}", model);
+
+    // Poll until the model is ready.
+    let mut status = model.status.clone();
+    // Get the current time.
+    let start = std::time::Instant::now();
+    // Give it 5 minutes to complete. That should be way
+    // more than enough!
+    while status != kittycad::types::ApiCallStatus::Completed
+        && status != kittycad::types::ApiCallStatus::Failed
+        && start.elapsed().as_secs() < 60 * 5
+    {
+        slog::info!(logger, "Polling for design status: {}", status);
+
+        // Poll for the status.
+        let result = kittycad_client
+            .api_calls()
+            .get_async_operation(&model.id.to_string())
+            .await?;
+
+        if let kittycad::types::AsyncApiCallOutput::TextToCad {
+            completed_at,
+            created_at,
+            error,
+            feedback,
+            id,
+            model_version,
+            output_format,
+            outputs,
+            prompt,
+            started_at,
+            status,
+            updated_at,
+            user_id,
+        } = result
+        {
+            model = kittycad::types::TextToCad {
+                completed_at,
+                created_at,
+                error,
+                feedback,
+                id,
+                model_version,
+                output_format,
+                outputs,
+                prompt,
+                started_at,
+                status,
+                updated_at,
+                user_id,
+            };
+        } else {
+            anyhow::bail!("Unexpected response type: {:?}", result);
+        }
+
+        status = model.status.clone();
+    }
+
+    // If the model failed we will want to tell the user.
+    if model.status == kittycad::types::ApiCallStatus::Failed {
+        if let Some(error) = model.error {
+            slog::warn!(logger, "Design failed: {}", error);
+        } else {
+            slog::warn!(logger, "Design failed: {:?}", model);
+        }
+
+        // TODO: tell the user it failed.
+        return Ok(());
+    }
+
+    if model.status != kittycad::types::ApiCallStatus::Completed {
+        slog::warn!(logger, "Design timed out: {:?}", model);
+
+        // TODO: tell the user it timed out.
+        return Ok(());
+    }
+
+    // Okay, we successfully got a model!
+    // TODO: do something with it.
+    slog::info!(logger, "Design completed: {:?}", model.prompt);
+
     Ok(())
 }
