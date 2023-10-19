@@ -505,9 +505,9 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
 
-            run_text_to_cad_prompt(ctx, &content).await?;
+            run_text_to_cad_prompt(ctx, msg, &content).await?;
 
-            msg.channel_id.say(&ctx.http, &content).await?;
+            //msg.channel_id.say(&ctx.http, &content).await?;
 
             return Ok(());
         }
@@ -518,7 +518,7 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     };
 }
 
-async fn run_text_to_cad_prompt(ctx: &Context, prompt: &str) -> Result<()> {
+async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> Result<()> {
     let data = ctx.data.read().await;
     let logger = data.get::<Logger>().ok_or(anyhow::anyhow!("Logger not found"))?;
     let kittycad_client = data
@@ -600,24 +600,28 @@ async fn run_text_to_cad_prompt(ctx: &Context, prompt: &str) -> Result<()> {
     if model.status == kittycad::types::ApiCallStatus::Failed {
         if let Some(error) = model.error {
             slog::warn!(logger, "Design failed: {}", error);
+            msg.reply(ctx, format!(":( Your prompt returned an error: {}", error))
+                .await?;
         } else {
             slog::warn!(logger, "Design failed: {:?}", model);
+            msg.reply(ctx, "Your prompt returned an error, but no error message. :(")
+                .await?;
         }
 
-        // TODO: tell the user it failed.
         return Ok(());
     }
 
     if model.status != kittycad::types::ApiCallStatus::Completed {
         slog::warn!(logger, "Design timed out: {:?}", model);
 
-        // TODO: tell the user it timed out.
+        msg.reply(ctx, "Your prompt timed out. :(").await?;
         return Ok(());
     }
 
     // Okay, we successfully got a model!
-    // TODO: do something with it.
     slog::info!(logger, "Design completed: {:?}", model.prompt);
+    // TODO: do something with it.
+    msg.reply(ctx, "Your design completed! :)").await?;
 
     Ok(())
 }
