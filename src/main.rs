@@ -63,18 +63,18 @@ pub struct Opts {
 
 impl Opts {
     /// Setup our logger.
-    pub fn create_logger(&self) -> slog::Logger {
+    pub fn create_logger(&self, app: &str) -> slog::Logger {
         if self.json {
             let drain = slog_json::Json::default(std::io::stderr()).fuse();
-            self.async_root_logger(drain)
+            self.async_root_logger(drain, app)
         } else {
             let decorator = slog_term::TermDecorator::new().build();
             let drain = slog_term::FullFormat::new(decorator).build().fuse();
-            self.async_root_logger(drain)
+            self.async_root_logger(drain, app)
         }
     }
 
-    fn async_root_logger<T>(&self, drain: T) -> slog::Logger
+    fn async_root_logger<T>(&self, drain: T, app: &str) -> slog::Logger
     where
         T: slog::Drain + Send + 'static,
         <T as slog::Drain>::Err: std::fmt::Debug,
@@ -87,7 +87,7 @@ impl Opts {
 
         let level_drain = slog::LevelFilter(drain, level).fuse();
         let async_drain = slog_async::Async::new(level_drain).build().fuse();
-        slog::Logger::root(async_drain, slog::o!())
+        slog::Logger::root(async_drain, slog::slog_o!("app" => app.to_owned()))
     }
 }
 
