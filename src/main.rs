@@ -736,6 +736,7 @@ async fn get_image_bytes_for_prompt(
 }
 
 /// Re-execute ourselves to convert the gltf file to an image.
+// We do this because the graphics lib we are using forces you to use the main thread.
 fn gltf_to_image(contents: &[u8]) -> Result<std::path::PathBuf> {
     // Create a temp file.
     let temp_dir = std::env::temp_dir();
