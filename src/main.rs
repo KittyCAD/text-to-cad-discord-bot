@@ -400,6 +400,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
 }
 
 #[command]
+#[num_args(0)]
 async fn about(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(
         &ctx.http,
@@ -413,6 +414,7 @@ async fn about(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 // Limit command usage to guilds.
 #[only_in(guilds)]
+#[num_args(0)]
 async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
     // The shard manager is an interface for mutating, stopping, restarting, and
     // retrieving information about shards.
@@ -451,6 +453,7 @@ async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 // Limit command usage to guilds.
 #[only_in(guilds)]
+#[num_args(0)]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(&ctx.http, "Pong! : )").await?;
 
@@ -459,6 +462,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Generate a CAD model from a text prompt."]
+#[example = "design a 2x4 lego"]
 async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     match args.single_quoted::<String>() {
         Ok(x) => {
