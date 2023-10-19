@@ -71,7 +71,6 @@ pub async fn listen_auth_discord_consent(
                     "bot",
                     "guilds",
                     "guilds.members.read",
-                    "webhook.incoming",
                  ].join("%20"),
                 serenity::model::gateway::GatewayIntents::all().bits(),
         ),
