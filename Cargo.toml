@@ -22,7 +22,7 @@ slog-async = "2.8.0"
 slog-json = "2.6.1"
 slog-term = "2.9.0"
 three-d = { version = "0.16.1", default-features = false, features = ["headless"] }
-three-d-asset = { version = "0.6.0", features = ["png", "gltf"] }
+three-d-asset = { version = "0.6.0", features = ["png", "gltf", "data-url"] }
 tokio = { version = "1.33.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.17", features = ["registry", "std", "fmt", "smallvec", "ansi", "tracing-log", "json"] }
 uuid = { version = "1.5.0", features = ["v4", "serde"] }

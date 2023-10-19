@@ -683,6 +683,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2e66c9d817f1720209181c316d28635c050fa304f9c79e47a520882661b7308"
 
 [[package]]
+name = "data-url"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41b319d1b62ffbd002e057f36bebd1f42b9f97927c9577461d855f3513c4289f"
+
+[[package]]
 name = "debug-ignore"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3468,6 +3474,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9959d4427b63958661828008f7470d6a8d2c0945b3df0dc7377d6aca38fb694"
 dependencies = [
  "cgmath",
+ "data-url",
  "gltf",
  "half",
  "image",

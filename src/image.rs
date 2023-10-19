@@ -4,9 +4,8 @@ use anyhow::Result;
 use three_d_asset::io::Serialize;
 
 /// Convert a model into bytes for an image.
-pub fn model_to_image(gltf_bytes: &[u8]) -> Result<Vec<u8>> {
-    let mut raw_asset = three_d_asset::io::RawAssets::new();
-    raw_asset.insert("model.gltf", gltf_bytes.to_vec());
+pub fn model_to_image(gltf_file: &std::path::PathBuf) -> Result<Vec<u8>> {
+    let mut raw_asset = three_d_asset::io::load(&[gltf_file])?;
 
     let viewport = three_d::Viewport::new_at_origo(1280, 720);
 

@@ -133,11 +133,11 @@ pub struct Server {
 #[derive(Parser, Clone, Debug)]
 pub struct ConvertImage {
     /// Path to the gltf file.
-    #[clap(short, long)]
+    #[clap(short, long = "gltf-path")]
     pub gltf_path: std::path::PathBuf,
 
     /// Path to the output image file.
-    #[clap(short, long)]
+    #[clap(short, long = "image-path")]
     pub image_path: std::path::PathBuf,
 }
 
@@ -410,8 +410,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
         }
 
         SubCommand::ConvertImage(c) => {
-            let gltf_bytes = std::fs::read(&c.gltf_path)?;
-            let image_bytes = crate::image::model_to_image(&gltf_bytes)?;
+            let image_bytes = crate::image::model_to_image(&c.gltf_path)?;
 
             std::fs::write(&c.image_path, image_bytes)?;
         }
@@ -506,7 +505,9 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
 
-            run_text_to_cad_prompt(ctx, msg, &content).await?;
+            if let Err(e) = run_text_to_cad_prompt(ctx, msg, &content).await {
+                msg.reply(ctx, &format!(":( There was an error: {:?}", e)).await?;
+            }
 
             return Ok(());
         }
@@ -730,14 +731,15 @@ async fn get_image_bytes_for_prompt(
     }
 
     // This is CPU bound so let's force it on another thread.
-    let image_path = tokio::task::spawn_blocking(move || gltf_to_image(&gltf_bytes)).await??;
+    let image_path =
+        tokio::task::spawn_blocking(enclose! { (logger) move || gltf_to_image(&logger, &gltf_bytes)}).await??;
 
     Ok((Some(image_path), None, Some(model)))
 }
 
 /// Re-execute ourselves to convert the gltf file to an image.
 // We do this because the graphics lib we are using forces you to use the main thread.
-fn gltf_to_image(contents: &[u8]) -> Result<std::path::PathBuf> {
+fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::PathBuf> {
     // Create a temp file.
     let temp_dir = std::env::temp_dir();
     let gltf_path = temp_dir.join(format!("{}.gltf", uuid::Uuid::new_v4()));
@@ -753,7 +755,16 @@ fn gltf_to_image(contents: &[u8]) -> Result<std::path::PathBuf> {
         .arg(&gltf_path)
         .arg("--image-path")
         .arg(&image_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .output()?;
+
+    if !output.status.success() {
+        slog::warn!(logger, "Convert image failed: {:?}", output);
+        anyhow::bail!("Convert image failed: {:?}", output);
+    }
+
+    slog::info!(logger, "Convert image output: {:?}", output);
 
     // Remove the gltf file.
     std::fs::remove_file(&gltf_path)?;
@@ -785,5 +796,13 @@ mod test {
         assert!(string_reply.is_none());
         assert!(model.is_some());
         assert!(image_file.is_some());
+
+        // Make sure the file exists.
+        let image_file = image_file.unwrap();
+        assert!(image_file.exists());
+
+        // Read the contents of the file.
+        let image_bytes = std::fs::read(&image_file).unwrap();
+        assert!(!image_bytes.is_empty());
     }
 }
