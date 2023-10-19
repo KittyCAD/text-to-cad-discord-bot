@@ -30,7 +30,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: text-to-cad-discord-bot-secrets
-                  key: discord_token
+                  key: discord_bot_token
             - name: DISCORD_CLIENT_ID
               valueFrom:
                 secretKeyRef:
