@@ -39,7 +39,7 @@ lazy_static::lazy_static! {
         let decorator = slog_term::TermDecorator::new().build();
         let drain = slog_term::FullFormat::new(decorator).build().fuse();
         let drain = slog_async::Async::new(drain).build().fuse();
-        slog::Logger::root(drain, slog::slog_o!())
+        slog::Logger::root(drain, slog::slog_o!("app" => "discord"))
     };
 }
 
@@ -131,12 +131,27 @@ impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
+struct KittycadApi;
+
+impl TypeMapKey for KittycadApi {
+    type Value = kittycad::Client;
+}
+
+struct Logger;
+
+impl TypeMapKey for Logger {
+    type Value = slog::Logger;
+}
+
 struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, _ctx: Context, ready: Ready) {
-        log::info!("{} is connected!", ready.user.name);
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        let data = ctx.data.read().await;
+        let logger = data.get::<Logger>().unwrap().clone();
+
+        slog::info!(logger, "{} is connected!", ready.user.name);
     }
 }
 
@@ -169,28 +184,40 @@ async fn bot_help(
 }
 
 #[hook]
-async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
-    log::info!("Got command '{}' by user '{}'", command_name, msg.author.name);
+async fn before(ctx: &Context, msg: &Message, command_name: &str) -> bool {
+    let data = ctx.data.read().await;
+    let logger = data.get::<Logger>().unwrap().clone();
+
+    slog::info!(logger, "Got command '{}' by user '{}'", command_name, msg.author.name);
 
     true // if `before` returns false, command processing doesn't happen.
 }
 
 #[hook]
-async fn after(_ctx: &Context, _msg: &Message, command_name: &str, command_result: CommandResult) {
+async fn after(ctx: &Context, _msg: &Message, command_name: &str, command_result: CommandResult) {
+    let data = ctx.data.read().await;
+    let logger = data.get::<Logger>().unwrap().clone();
+
     match command_result {
-        Ok(()) => log::info!("Processed command '{}'", command_name),
-        Err(why) => log::info!("Command '{}' returned error {:?}", command_name, why),
+        Ok(()) => slog::info!(logger, "Processed command '{}'", command_name),
+        Err(why) => slog::info!(logger, "Command '{}' returned error {:?}", command_name, why),
     }
 }
 
 #[hook]
-async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &str) {
-    log::info!("Could not find command named '{}'", unknown_command_name);
+async fn unknown_command(ctx: &Context, _msg: &Message, unknown_command_name: &str) {
+    let data = ctx.data.read().await;
+    let logger = data.get::<Logger>().unwrap().clone();
+
+    slog::info!(logger, "Could not find command named '{}'", unknown_command_name);
 }
 
 #[hook]
-async fn normal_message(_ctx: &Context, msg: &Message) {
-    log::info!("Message is not a command '{}'", msg.content);
+async fn normal_message(ctx: &Context, msg: &Message) {
+    let data = ctx.data.read().await;
+    let logger = data.get::<Logger>().unwrap().clone();
+
+    slog::info!(logger, "Message is not a command '{}'", msg.content);
 }
 
 #[hook]
@@ -349,6 +376,8 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             {
                 let mut data = client.data.write().await;
                 data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+                data.insert::<KittycadApi>(kittycad::Client::new_from_env());
+                data.insert::<Logger>(crate::LOGGER.clone());
             }
 
             // start listening for events by starting a single shard
@@ -472,6 +501,8 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
 
+            run_text_to_cad_prompt(ctx, &content).await?;
+
             msg.channel_id.say(&ctx.http, &content).await?;
 
             return Ok(());
@@ -481,4 +512,12 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             return Ok(());
         }
     };
+}
+
+async fn run_text_to_cad_prompt(ctx: &Context, prompt: &str) -> Result<()> {
+    let data = ctx.data.read().await;
+    let logger = data.get::<Logger>().unwrap().clone();
+
+    slog::info!(logger, "Got design request: {}", prompt);
+    Ok(())
 }
