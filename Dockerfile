@@ -9,8 +9,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
 	ca-certificates \
 	libssl3 \
-        libfreetype6 \
+	libfreetype6 \
 	libfontconfig1 \
+	xvfb \
 	--no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 

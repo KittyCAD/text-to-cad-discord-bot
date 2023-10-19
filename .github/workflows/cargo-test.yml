@@ -43,12 +43,13 @@ jobs:
             libssl3 \
             libfreetype6 \
             libfontconfig1 \
+            xvfb \
             --no-install-recommends
 
       - name: cargo test
         shell: bash
         run: |
-          cargo nextest run --all --test-threads=1 --no-fail-fast
+          xvfb-run -a  cargo nextest run --all --test-threads=1 --no-fail-fast
         env:
           KITTYCAD_API_TOKEN: ${{secrets.KITTYCAD_API_TOKEN}}
             #- name: Upload to codecov.io
