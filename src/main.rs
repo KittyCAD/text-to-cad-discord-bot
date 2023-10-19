@@ -135,8 +135,8 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, _: Context, ready: Ready) {
-        println!("{} is connected!", ready.user.name);
+    async fn ready(&self, _ctx: Context, ready: Ready) {
+        log::info!("{} is connected!", ready.user.name);
     }
 }
 
@@ -170,7 +170,7 @@ async fn bot_help(
 
 #[hook]
 async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
-    println!("Got command '{}' by user '{}'", command_name, msg.author.name);
+    log::info!("Got command '{}' by user '{}'", command_name, msg.author.name);
 
     true // if `before` returns false, command processing doesn't happen.
 }
@@ -178,19 +178,19 @@ async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
 #[hook]
 async fn after(_ctx: &Context, _msg: &Message, command_name: &str, command_result: CommandResult) {
     match command_result {
-        Ok(()) => println!("Processed command '{}'", command_name),
-        Err(why) => println!("Command '{}' returned error {:?}", command_name, why),
+        Ok(()) => log::info!("Processed command '{}'", command_name),
+        Err(why) => log::info!("Command '{}' returned error {:?}", command_name, why),
     }
 }
 
 #[hook]
 async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &str) {
-    println!("Could not find command named '{}'", unknown_command_name);
+    log::info!("Could not find command named '{}'", unknown_command_name);
 }
 
 #[hook]
 async fn normal_message(_ctx: &Context, msg: &Message) {
-    println!("Message is not a command '{}'", msg.content);
+    log::info!("Message is not a command '{}'", msg.content);
 }
 
 #[hook]
