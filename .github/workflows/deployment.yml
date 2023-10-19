@@ -1,0 +1,36 @@
+name: deployment
+permissions:
+  packages: write
+  contents: read
+on:
+  push:
+    branches: main
+    paths:
+      - '**.rs'
+      - Cargo.toml
+      - Cargo.lock
+      - 'rust-toolchain.toml'
+      - 'Dockerfile'
+      - .github/workflows/docker-image.yml
+      - .github/workflows/deployment.yml
+      - 'kubernetes/**.yaml'
+  workflow_dispatch:
+    inputs:
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+jobs:
+  docker-image:
+    uses: ./.github/workflows/docker-image.yml
+    secrets: inherit
+  argocd:
+    needs: [docker-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch deploy to infra
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GLOBAL_PAT }}
+          repository: kittycad/infra
+          event-type: kustomize-deploy
+          client-payload: '{"update_type": "appset", "image_name": "ghcr.io/kittycad/${{ github.event.repository.name }}", "app_name": "${{ github.event.repository.name }}", "sha": "${{ github.sha }}"}'
