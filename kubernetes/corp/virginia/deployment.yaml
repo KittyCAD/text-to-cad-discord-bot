@@ -46,6 +46,11 @@ spec:
                 secretKeyRef:
                   name: text-to-cad-discord-bot-secrets
                   key: discord_redirect_uri
+            - name: KITTYCAD_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: text-to-cad-discord-bot-secrets
+                  key: kittycad_token
           ports:
             - name: api
               containerPort: 8080
