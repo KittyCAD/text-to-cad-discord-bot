@@ -21,6 +21,7 @@ impl ServerContext {
             discord_client_id: Default::default(),
             discord_client_secret: Default::default(),
             discord_redirect_uri: Default::default(),
+            kittycad_api_token: Default::default(),
         };
 
         // Create the server in debug mode.

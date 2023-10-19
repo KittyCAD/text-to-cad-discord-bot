@@ -120,6 +120,10 @@ pub struct Server {
     /// The discord redirect URI to use.
     #[clap(long, env = "DISCORD_REDIRECT_URI")]
     pub discord_redirect_uri: String,
+
+    /// The KittyCAD API token to use.
+    #[clap(long, env = "KITTYCAD_API_TOKEN")]
+    pub kittycad_api_token: String,
 }
 
 // A container type is created for inserting into the Client's `data`, which
@@ -376,7 +380,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             {
                 let mut data = client.data.write().await;
                 data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-                data.insert::<KittycadApi>(kittycad::Client::new_from_env());
+                data.insert::<KittycadApi>(kittycad::Client::new(&s.kittycad_api_token));
                 data.insert::<Logger>(crate::LOGGER.clone());
             }
 
