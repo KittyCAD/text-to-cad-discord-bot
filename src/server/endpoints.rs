@@ -39,7 +39,7 @@ pub async fn ping(_rqctx: RequestContext<Arc<Context>>) -> Result<HttpResponseOk
 }
 
 #[derive(Debug, Clone, Default, JsonSchema, Deserialize, Serialize)]
-pub struct UserConsentURL {
+pub struct UserConsentUrl {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub url: String,
 }
@@ -59,9 +59,9 @@ pub struct DiscordAuthCallback {
 }]
 pub async fn listen_auth_discord_consent(
     rqctx: RequestContext<Arc<Context>>,
-) -> Result<HttpResponseOk<UserConsentURL>, HttpError> {
+) -> Result<HttpResponseOk<UserConsentUrl>, HttpError> {
     let ctx = rqctx.context();
-    Ok(HttpResponseOk(UserConsentURL {
+    Ok(HttpResponseOk(UserConsentUrl {
         url: format!("https://discord.com/api/oauth2/authorize?client_id={}&permissions=8&redirect_uri={}&response_type=code&scope={}&permissions=70368744177655",
                  ctx.settings.discord_client_id,
                  ctx.settings.discord_redirect_uri,

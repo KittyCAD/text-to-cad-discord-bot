@@ -77,7 +77,7 @@ fn test_openapi() {
     let spec: openapiv3::OpenAPI = serde_json::from_value(schema).expect("schema was not valid OpenAPI");
 
     assert_eq!(spec.openapi, "3.0.3");
-    assert_eq!(spec.info.title, "KittyCAD CIO");
+    assert_eq!(spec.info.title, "KittyCAD Text to CAD Discord Bot");
     assert_eq!(spec.info.version, "0.1.0");
 
     // Spot check a couple of items.
@@ -85,8 +85,8 @@ fn test_openapi() {
     assert!(spec.paths.paths.get("/ping").is_some());
 
     // Check for lint errors.
-    //let errors = openapi_lint::validate(&spec);
-    //assert!(errors.is_empty(), "{}", errors.join("\n\n"));
+    let errors = openapi_lint::validate(&spec);
+    assert!(errors.is_empty(), "{}", errors.join("\n\n"));
 
     // TODO: add a tag to each endpoint.
     let tags = String::new();
