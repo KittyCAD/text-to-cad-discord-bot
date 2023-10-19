@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: text-to-cad-discord-bot
+commonLabels:
+  kittycad.io/repo: text-to-cad-discord-bot
+resources:
+  - ghcr-auth.yaml
+  - deployment.yaml
+  - secrets.yaml
+  - service.yaml
+  - ingress.yaml

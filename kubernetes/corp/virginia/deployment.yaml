@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: text-to-cad-discord-bot
+  labels:
+    kittycad.io/role: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      kittycad.io/role: server
+  template:
+    metadata:
+      labels:
+        kittycad.io/role: server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/kittycad/text-to-cad-discord-bot:notspecified
+          env:
+            - name: SENTRY_ENV
+              value: "PRODUCTION"
+            - name: RUST_BACKTRACE
+              value: "1"
+            - name: RUST_LOG
+              value: "info"
+            - name: PORT
+              value: "8080"
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: text-to-cad-discord-bot-secrets
+                  key: discord_token
+            - name: DISCORD_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: text-to-cad-discord-bot-secrets
+                  key: discord_client_id
+            - name: DISCORD_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: text-to-cad-discord-bot-secrets
+                  key: discord_client_secret
+            - name: DISCORD_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: text-to-cad-discord-bot-secrets
+                  key: discord_redirect_uri
+          ports:
+            - name: api
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: api
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: api
+            initialDelaySeconds: 2
+            periodSeconds: 10
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+          volumeMounts:
+            - name: kittycad-secret-vol
+              mountPath: /kittycad/secrets.yaml
+              subPath: secrets.yaml
+      volumes:
+        - name: kittycad-secret-vol
+          secret:
+            secretName: text-to-cad-discord-bot-secrets
+      imagePullSecrets:
+        - name: ghcr-auth

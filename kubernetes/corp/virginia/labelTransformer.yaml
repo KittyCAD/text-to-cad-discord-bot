@@ -1,0 +1,10 @@
+commonLabels:
+# These utilities make less boilerplate on services and deployments by filling in match labels
+- path: spec/selector/matchLabels
+  create: true
+  kind: Deployment
+
+- path: spec/selector
+  create: true
+  version: v1
+  kind: Service

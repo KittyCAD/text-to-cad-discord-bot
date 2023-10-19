@@ -8,7 +8,7 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::HashSet, env, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -277,9 +277,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             }});
 
             // Login with a bot token from the environment
-            let token = env::var("DISCORD_TOKEN").expect("expected DISCORD_TOKEN in env");
-
-            let http = Http::new(&token);
+            let http = Http::new(&s.discord_token);
 
             // We will fetch your bot's owners and id
             let info = http.get_current_application_info().await?;
@@ -343,7 +341,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             // You will need to enable these 2 options on the bot application, and possibly wait up to 5
             // minutes.
             let intents = GatewayIntents::all();
-            let mut client = Client::builder(&token, intents)
+            let mut client = Client::builder(&s.discord_token, intents)
                 .event_handler(Handler)
                 .framework(framework)
                 .await?;

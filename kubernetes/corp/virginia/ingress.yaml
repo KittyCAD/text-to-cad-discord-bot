@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kittycad-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: 0
+spec:
+  tls:
+    - hosts:
+        - text-to-cad-discord-bot.corp.kittycad.io
+      secretName: text-to-cad-discord-bot-corp-kittycad-tls
+  rules:
+    - host: text-to-cad-discord-bot.corp.kittycad.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
