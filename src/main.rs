@@ -237,8 +237,7 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, _com
         // We notify them only once.
         if info.is_first_try {
             let _ = msg
-                .channel_id
-                .say(&ctx.http, &format!("Try this again in {} seconds.", info.as_secs()))
+                .reply(&ctx.http, &format!("Try this again in {} seconds.", info.as_secs()))
                 .await;
         }
     }
@@ -427,12 +426,11 @@ async fn owner_check(_: &Context, msg: &Message, _: &mut Args, _: &CommandOption
 
 #[command]
 async fn about(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id
-        .say(
-            &ctx.http,
-            "A discord bot to play with the KittyCAD Text to CAD API. : )",
-        )
-        .await?;
+    msg.reply(
+        &ctx.http,
+        "A discord bot to play with the KittyCAD Text to CAD API. : )",
+    )
+    .await?;
 
     Ok(())
 }
@@ -481,7 +479,7 @@ async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[checks(Owner)]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id.say(&ctx.http, "Pong! : )").await?;
+    msg.reply(&ctx.http, "Pong! : )").await?;
 
     Ok(())
 }
@@ -508,8 +506,6 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
 
             run_text_to_cad_prompt(ctx, msg, &content).await?;
-
-            //msg.channel_id.say(&ctx.http, &content).await?;
 
             return Ok(());
         }
