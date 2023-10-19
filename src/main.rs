@@ -506,6 +506,7 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
 
             if let Err(e) = run_text_to_cad_prompt(ctx, msg, &content).await {
+                slog::warn!(crate::LOGGER, "Error running text to cad prompt: {:?}", e);
                 msg.reply(ctx, &format!(":( There was an error: {:?}", e)).await?;
             }
 
@@ -599,7 +600,6 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
             }
         }
     }
-
     // TODO: add export button.
 
     Ok(())
@@ -779,8 +779,8 @@ mod test {
 
     use crate::get_image_bytes_for_prompt;
 
-    #[tokio::test(flavor = "multi_thread")]
-    #[ignore]
+    #[tokio::test]
+    #[ignore] // since it cannot find the binary
     async fn test_get_image_from_prompt() {
         let logger = {
             let decorator = slog_term::PlainDecorator::new(slog_term::TestStdoutWriter);
