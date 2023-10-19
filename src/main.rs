@@ -412,7 +412,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
         SubCommand::ConvertImage(c) => {
             let image_bytes = crate::image::model_to_image(&c.gltf_path).await?;
 
-            std::fs::write(&c.image_path, image_bytes)?;
+            tokio::fs::write(&c.image_path, image_bytes).await?;
         }
     }
 
@@ -556,7 +556,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .await?;
 
     // Remove the file.
-    std::fs::remove_file(&image_path)?;
+    tokio::fs::remove_file(&image_path).await?;
 
     // Wait for feedback to the model based on emoji reaction.
     let reaction = our_msg
@@ -708,25 +708,24 @@ async fn get_image_bytes_for_prompt(
     }
 
     // This is CPU bound so let's force it on another thread.
-    let image_path =
-        tokio::task::spawn_blocking(enclose! { (logger) move || gltf_to_image(&logger, &gltf_bytes)}).await??;
+    let image_path = gltf_to_image(logger, &gltf_bytes).await?;
 
     Ok((image_path, model))
 }
 
 /// Re-execute ourselves to convert the gltf file to an image.
 // We do this because the graphics lib we are using forces you to use the main thread.
-fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::PathBuf> {
+async fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::PathBuf> {
     // Create a temp file.
     let temp_dir = std::env::temp_dir();
     let gltf_path = temp_dir.join(format!("{}.gltf", uuid::Uuid::new_v4()));
     let image_path = temp_dir.join(format!("{}.png", uuid::Uuid::new_v4()));
 
     // Write the gltf bytes to the file.
-    std::fs::write(&gltf_path, contents)?;
+    tokio::fs::write(&gltf_path, contents).await?;
 
     // Re-execute ourselves to convert the gltf file to an image.
-    let output = std::process::Command::new(path_to_self()?)
+    let output = tokio::process::Command::new(path_to_self()?)
         .arg("convert-image")
         .arg("--gltf-path")
         .arg(&gltf_path)
@@ -734,7 +733,8 @@ fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::Pa
         .arg(&image_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .output()?;
+        .output()
+        .await?;
 
     if !output.status.success() {
         slog::warn!(logger, "Convert image failed: {:?}", output);
@@ -744,7 +744,7 @@ fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::Pa
     slog::info!(logger, "Convert image output: {:?}", output);
 
     // Remove the gltf file.
-    std::fs::remove_file(&gltf_path)?;
+    tokio::fs::remove_file(&gltf_path).await?;
 
     // Return the image path.
     Ok(image_path)
