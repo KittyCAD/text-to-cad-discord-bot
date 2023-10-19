@@ -422,11 +422,8 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
 #[command]
 #[num_args(0)]
 async fn about(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(
-        &ctx.http,
-        "A discord bot to play with the KittyCAD Text to CAD API. : )",
-    )
-    .await?;
+    msg.reply(&ctx.http, "A discord bot to play with the KittyCAD Text to CAD API. 🤪")
+        .await?;
 
     Ok(())
 }
@@ -443,7 +440,8 @@ async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
     let shard_manager = match data.get::<ShardManagerContainer>() {
         Some(v) => v,
         None => {
-            msg.reply(ctx, "There was a problem getting the shard manager").await?;
+            msg.reply(ctx, "‼️  There was a problem getting the shard manager")
+                .await?;
 
             return Ok(());
         }
@@ -458,13 +456,13 @@ async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
     let runner = match runners.get(&ShardId(ctx.shard_id)) {
         Some(runner) => runner,
         None => {
-            msg.reply(ctx, "No shard found").await?;
+            msg.reply(ctx, "‼️  No shard found").await?;
 
             return Ok(());
         }
     };
 
-    msg.reply(ctx, &format!("The shard latency is {:?}", runner.latency))
+    msg.reply(ctx, &format!("💨 The shard latency is {:?}", runner.latency))
         .await?;
 
     Ok(())
@@ -475,7 +473,7 @@ async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[num_args(0)]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(&ctx.http, "Pong! : )").await?;
+    msg.reply(&ctx.http, "🏓").await?;
 
     Ok(())
 }
@@ -507,16 +505,18 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             if let Err(e) = run_text_to_cad_prompt(ctx, msg, &content).await {
                 slog::warn!(crate::LOGGER, "Error running text to cad prompt: {:?}", e);
-                let message = format!(":( There was an error: {:?}", e);
+                let message = format!("🤮 {:?}", e);
                 // TRuncate the message to the first 2000 characters.
                 let message = &message[..std::cmp::min(message.len(), 2000)];
                 msg.reply(ctx, &message).await?;
+                msg.react(ctx, '🤮').await?;
             }
 
             return Ok(());
         }
         Err(_) => {
-            msg.reply(ctx, "An argument is required to run this command.").await?;
+            msg.reply(ctx, "🫠 An argument is required to run this command.")
+                .await?;
             return Ok(());
         }
     };
@@ -530,21 +530,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .ok_or(anyhow::anyhow!("Kittycad client not found"))?;
 
     // This is CPU bound so let's force it on another thread.
-    let (image_file, string_reply, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
-
-    if let Some(string_reply) = string_reply {
-        msg.reply(ctx, &string_reply).await?;
-        // Return early.
-        return Ok(());
-    }
-
-    let Some(model) = model else {
-        anyhow::bail!("No model found");
-    };
-
-    let Some(image_path) = image_file else {
-        anyhow::bail!("No image found");
-    };
+    let (image_path, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
 
     // Show that we are done working on it.
     msg.react(ctx, '👍').await?;
@@ -612,11 +598,7 @@ async fn get_image_bytes_for_prompt(
     logger: &slog::Logger,
     kittycad_client: &kittycad::Client,
     prompt: &str,
-) -> Result<(
-    Option<std::path::PathBuf>,
-    Option<String>,
-    Option<kittycad::types::TextToCad>,
-)> {
+) -> Result<(std::path::PathBuf, kittycad::types::TextToCad)> {
     slog::info!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
@@ -695,21 +677,17 @@ async fn get_image_bytes_for_prompt(
     if model.status == kittycad::types::ApiCallStatus::Failed {
         if let Some(error) = model.error {
             slog::warn!(logger, "Design failed: {}", error);
-            return Ok((None, Some(format!(":( Your prompt returned an error: {}", error)), None));
+            anyhow::bail!("Your prompt returned an error: {}", error);
         } else {
             slog::warn!(logger, "Design failed: {:?}", model);
-            return Ok((
-                None,
-                Some("Your prompt returned an error, but no error message. :(".to_string()),
-                None,
-            ));
+            anyhow::bail!("Your prompt returned an error, but no error message. :(");
         }
     }
 
     if model.status != kittycad::types::ApiCallStatus::Completed {
         slog::warn!(logger, "Design timed out: {:?}", model);
 
-        return Ok((None, Some("Your prompt timed out. :(".to_string()), None));
+        anyhow::bail!("Your prompt timed out");
     }
 
     // Okay, we successfully got a model!
@@ -726,18 +704,14 @@ async fn get_image_bytes_for_prompt(
         }
     } else {
         slog::warn!(logger, "Design completed, but no gltf outputs: {:?}", model);
-        return Ok((
-            None,
-            Some("Your design completed, but no gltf outputs were found. :(".to_string()),
-            None,
-        ));
+        anyhow::bail!("Your design completed, but no gltf outputs were found");
     }
 
     // This is CPU bound so let's force it on another thread.
     let image_path =
         tokio::task::spawn_blocking(enclose! { (logger) move || gltf_to_image(&logger, &gltf_bytes)}).await??;
 
-    Ok((Some(image_path), None, Some(model)))
+    Ok((image_path, model))
 }
 
 /// Re-execute ourselves to convert the gltf file to an image.
@@ -807,15 +781,11 @@ mod test {
         let mut kittycad_client = kittycad::Client::new_from_env();
         kittycad_client.set_base_url("https://api.dev.kittycad.io");
 
-        let (image_file, string_reply, model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
+        let (image_file, _model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
             .await
             .unwrap();
-        assert!(string_reply.is_none());
-        assert!(model.is_some());
-        assert!(image_file.is_some());
 
         // Make sure the file exists.
-        let image_file = image_file.unwrap();
         assert!(image_file.exists());
 
         // Read the contents of the file.
