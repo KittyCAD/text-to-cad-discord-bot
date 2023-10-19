@@ -2,6 +2,7 @@
 
 #![deny(missing_docs)]
 
+mod image;
 #[macro_use]
 mod enclose;
 mod server;

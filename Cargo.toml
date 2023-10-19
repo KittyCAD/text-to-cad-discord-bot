@@ -21,6 +21,8 @@ slog = "2.7.0"
 slog-async = "2.8.0"
 slog-json = "2.6.1"
 slog-term = "2.9.0"
+three-d = { version = "0.16.1", features = ["headless", "image"] }
+three-d-asset = { version = "0.6.0", features = ["png"] }
 tokio = { version = "1.33.0", features = ["full"] }
 tracing-subscriber = { version = "0.3.17", features = ["registry", "std", "fmt", "smallvec", "ansi", "tracing-log", "json"] }
 
