@@ -502,9 +502,15 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
 
-            if let Err(e) = run_text_to_cad_prompt(ctx, msg, &content).await {
+            if let Err(err) = run_text_to_cad_prompt(ctx, msg, &content).await {
+                // If the error was from the API, let's handle it better for each type of error.
+                let e = match err.downcast_ref::<kittycad::types::error::Error>() {
+                    Some(kerr) => kerr.to_string(),
+                    None => err.to_string(),
+                };
+
                 slog::warn!(crate::LOGGER, "Error running text to cad prompt: {:?}", e);
-                let message = format!("🤮 {:?}", e);
+                let message = format!("🤮 {:?}", err);
                 // TRuncate the message to the first 2000 characters.
                 let message = &message[..std::cmp::min(message.len(), 2000)];
                 msg.reply(ctx, &message).await?;
@@ -528,8 +534,16 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .get::<KittycadApi>()
         .ok_or(anyhow::anyhow!("Kittycad client not found"))?;
 
+    // Get a token for the user based on their discord id.
+    let kittycad_token = kittycad_client
+        .meta()
+        .internal_get_api_token_for_discord_user(&msg.author.id.0.to_string())
+        .await?;
+    // Now create a new kittycad client with the user's token.
+    let users_client = kittycad::Client::new(&kittycad_token);
+
     // This is CPU bound so let's force it on another thread.
-    let (image_path, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
+    let (image_path, model) = get_image_bytes_for_prompt(logger, &users_client, prompt).await?;
 
     // Show that we are done working on it.
     msg.react(ctx, '🥳').await?;
@@ -584,7 +598,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
 
             if let Some(ai_reaction) = reaction {
                 // Send our feedback on the model.
-                kittycad_client
+                users_client
                     .ai()
                     .create_text_to_cad_model_feedback(ai_reaction, model.id)
                     .await?;
@@ -598,13 +612,13 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
 
 async fn get_image_bytes_for_prompt(
     logger: &slog::Logger,
-    kittycad_client: &kittycad::Client,
+    users_client: &kittycad::Client,
     prompt: &str,
 ) -> Result<(std::path::PathBuf, kittycad::types::TextToCad)> {
     slog::debug!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
-    let mut model: kittycad::types::TextToCad = kittycad_client
+    let mut model: kittycad::types::TextToCad = users_client
         .ai()
         .create_text_to_cad(
             kittycad::types::FileExportFormat::Gltf,
@@ -629,7 +643,7 @@ async fn get_image_bytes_for_prompt(
         slog::debug!(logger, "Polling for design status: {}", status);
 
         // Poll for the status.
-        let result = kittycad_client
+        let result = users_client
             .api_calls()
             .get_async_operation(&model.id.to_string())
             .await?;
