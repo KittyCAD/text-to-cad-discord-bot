@@ -535,8 +535,8 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     msg.react(ctx, '👍').await?;
 
     let our_msg = msg
-        .author
-        .direct_message(&ctx.http, |m| {
+        .channel_id
+        .send_message(&ctx.http, |m| {
             m.content(msg.author.mention())
                 .embed(|e| {
                     e.title(prompt)
