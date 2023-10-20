@@ -564,6 +564,7 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                                 err_str.push_str(&format!("{}: ", code));
                             }
                             err_str.push_str(&error.message);
+
                             err_str.trim().trim_end_matches(':').to_string()
                         } else {
                             kerr.to_string()
@@ -572,6 +573,11 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
                     None => err.to_string(),
                 };
+
+                if e.contains("User has not authenticated") {
+                    // Give a special emoji for this error.
+                    msg.react(ctx, '🔒').await?;
+                }
 
                 slog::warn!(logger, "Error running text to cad prompt: {:?}", e);
                 let message = format!("🤮 {:?}", err);
