@@ -532,12 +532,13 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     let (image_path, model) = get_image_bytes_for_prompt(logger, kittycad_client, prompt).await?;
 
     // Show that we are done working on it.
-    msg.react(ctx, '👍').await?;
+    msg.react(ctx, '🥳').await?;
 
     let our_msg = msg
         .channel_id
         .send_message(&ctx.http, |m| {
-            m.content(msg.author.mention())
+            let message = m
+                .content(msg.author.mention())
                 .embed(|e| {
                     e.title(prompt)
                         .image(&format!(
@@ -550,7 +551,9 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
                         // This also accepts a rfc3339 Timestamp
                         .timestamp(serenity::model::Timestamp::now())
                 })
-                .add_file(&image_path)
+                .add_file(&image_path);
+            slog::info!(logger, "Sending message: {:?}", message);
+            message
         })
         .await?;
 
