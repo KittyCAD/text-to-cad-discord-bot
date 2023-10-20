@@ -339,6 +339,8 @@ async fn main() -> Result<()> {
 async fn run_cmd(opts: &Opts) -> Result<()> {
     match &opts.subcmd {
         SubCommand::Server(s) => {
+            let logger = opts.create_logger("discord");
+
             // Run the dropshot server in the background.
             let handle = tokio::spawn(enclose! { (s, opts) async move {
                 crate::server::server(&s, &opts).await?;
@@ -357,6 +359,10 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 owners.insert(info.owner.id);
             }
             let bot_id = http.get_current_user().await?;
+
+            // We will fetch your bot's roles so users can be restricted.
+            let roles = http.get_guild_roles(info.id.0).await?;
+            slog::info!(logger, "Roles: {:?}", roles);
 
             // Set up the framework.
             let framework = StandardFramework::new()
@@ -421,7 +427,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 let mut data = client.data.write().await;
                 data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
                 data.insert::<KittycadApi>(kittycad::Client::new(&s.kittycad_api_token));
-                data.insert::<Logger>(crate::LOGGER.clone());
+                data.insert::<Logger>(logger.clone());
             }
 
             // start listening for events by starting a single shard
@@ -521,6 +527,9 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[description = "Generate a CAD model from a text prompt."]
 #[example = "design a 2x4 lego"]
 async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let data = ctx.data.read().await;
+    let logger = data.get::<Logger>().ok_or(anyhow::anyhow!("Logger not found"))?;
+
     match args.single_quoted::<String>() {
         Ok(x) => {
             // React to the message that we are working on it.
@@ -563,7 +572,7 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                     None => err.to_string(),
                 };
 
-                slog::warn!(crate::LOGGER, "Error running text to cad prompt: {:?}", e);
+                slog::warn!(logger, "Error running text to cad prompt: {:?}", e);
                 let message = format!("🤮 {:?}", err);
                 // TRuncate the message to the first 2000 characters.
                 let message = &message[..std::cmp::min(message.len(), 2000)];
