@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           cargo build --all
-          xvfb-run -a  cargo nextest run --all --test-threads=1 --no-fail-fast
+          cargo nextest run --all --test-threads=1 --no-fail-fast
         env:
           KITTYCAD_API_TOKEN: ${{secrets.KITTYCAD_API_TOKEN}}
             #- name: Upload to codecov.io

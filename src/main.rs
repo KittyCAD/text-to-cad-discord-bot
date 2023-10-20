@@ -723,13 +723,24 @@ async fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::pa
     // Write the gltf bytes to the file.
     tokio::fs::write(&gltf_path, contents).await?;
 
+    let mut command = tokio::process::Command::new(path_to_self()?);
+    let mut args = vec![
+        "convert-image".to_string(),
+        "--gltf-path".to_string(),
+        gltf_path.to_string_lossy().to_string(),
+        "--image-path".to_string(),
+        image_path.to_string_lossy().to_string(),
+    ];
+    if cfg!(target_os = "linux") {
+        // We need to run with a virtual x server.
+        command = tokio::process::Command::new("xvfb-run");
+        // Push an arg to the front of args.
+        args.insert(0, "-a".to_string());
+        args.insert(1, path_to_self()?.to_string_lossy().to_string());
+    }
     // Re-execute ourselves to convert the gltf file to an image.
-    let output = tokio::process::Command::new(path_to_self()?)
-        .arg("convert-image")
-        .arg("--gltf-path")
-        .arg(&gltf_path)
-        .arg("--image-path")
-        .arg(&image_path)
+    let output = command
+        .args(args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()
