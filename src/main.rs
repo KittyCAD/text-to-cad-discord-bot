@@ -574,15 +574,21 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                     None => err.to_string(),
                 };
 
+                slog::warn!(logger, "Error running text to cad prompt: {}", e);
+                let message = format!("🤮 {}", e);
+                // TRuncate the message to the first 2000 characters.
+                let message = &message[..std::cmp::min(message.len(), 2000)];
+
                 if e.contains("User has not authenticated") {
                     // Give a special emoji for this error.
                     msg.react(ctx, '🔒').await?;
+                    // Send the message as a DM so we don't spam the channel.
+                    msg.author.direct_message(ctx, |m| m.content(message)).await?;
+
+                    // Return early so we don't send the message to the channel.
+                    return Ok(());
                 }
 
-                slog::warn!(logger, "Error running text to cad prompt: {:?}", e);
-                let message = format!("🤮 {:?}", err);
-                // TRuncate the message to the first 2000 characters.
-                let message = &message[..std::cmp::min(message.len(), 2000)];
                 msg.reply(ctx, &message).await?;
                 msg.react(ctx, '🤮').await?;
             }
