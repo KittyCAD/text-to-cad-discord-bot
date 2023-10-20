@@ -1584,9 +1584,9 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "kittycad"
-version = "0.2.36"
+version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46723a22c46d9e82e6f48bb35de7397a60a1626685f200e12b4ffa10e08afc26"
+checksum = "0cddbff0fd19bcd7960dd4f7f2e328fd9408b751bae704a2c79606b999b5a6bb"
 dependencies = [
  "anyhow",
  "async-trait",

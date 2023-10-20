@@ -535,7 +535,21 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             if let Err(err) = run_text_to_cad_prompt(ctx, msg, &content).await {
                 // If the error was from the API, let's handle it better for each type of error.
                 let e = match err.downcast_ref::<kittycad::types::error::Error>() {
-                    Some(kerr) => kerr.to_string(),
+                    Some(kerr) => {
+                        if let kittycad::types::error::Error::Server { body, status } = kerr {
+                            // Get the body of the response.
+                            let error: kittycad::types::Error =
+                                serde_json::from_str(body).unwrap_or(kittycad::types::Error {
+                                    error_code: Some(status.to_string()),
+                                    message: Default::default(),
+                                    request_id: Default::default(),
+                                });
+                            error.to_string()
+                        } else {
+                            kerr.to_string()
+                        }
+                    }
+
                     None => err.to_string(),
                 };
 
@@ -570,7 +584,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .internal_get_api_token_for_discord_user(&msg.author.id.0.to_string())
         .await?;
     // Now create a new kittycad client with the user's token.
-    let users_client = kittycad::Client::new(&kittycad_token);
+    let users_client = kittycad::Client::new(kittycad_token.token);
 
     // This is CPU bound so let's force it on another thread.
     let (image_path, model) = get_image_bytes_for_prompt(logger, &users_client, prompt).await?;
