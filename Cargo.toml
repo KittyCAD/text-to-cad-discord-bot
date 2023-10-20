@@ -5,7 +5,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = { version = "1.0.75", features = ["backtrace"] }
+anyhow = { version = "1.0.75", features = [] }
 clap = { version = "4.4.4", features = ["cargo", "derive", "env", "unicode"] }
 dropshot = { git = "https://github.com/oxidecomputer/dropshot", branch = "main" }
 kittycad = "0.2.35"
