@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
 	libssl3 \
 	libfreetype6 \
 	libfontconfig1 \
+	xauth \
 	xvfb \
 	--no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
