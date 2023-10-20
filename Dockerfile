@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 	libfreetype6 \
 	libfontconfig1 \
 	xauth \
+	xorg \
 	xvfb \
 	--no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
