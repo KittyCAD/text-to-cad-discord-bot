@@ -201,6 +201,15 @@ struct General;
 #[summary = "Commands for server owners"]
 struct Owner;
 
+#[group]
+#[allowed_roles("kittycad staff")]
+// Limit all commands to be guild-restricted.
+#[only_in(guilds)]
+#[commands(design, latency, ping)]
+// Summary only appears when listing multiple groups.
+#[summary = "Commands for KittyCAD staff"]
+struct KittyCadStaff;
+
 // The framework provides two built-in help commands for you to use.
 // But you can also make your own customized help command that forwards
 // to the behaviour of either of them.
@@ -393,6 +402,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 // #name is turned all uppercase
                 .help(&BOT_HELP)
                 .group(&GENERAL_GROUP)
+                .group(&KITTYCADSTAFF_GROUP)
                 .group(&OWNER_GROUP);
 
             // For this example to run properly, the "Presence Intent" and "Server Members Intent"
