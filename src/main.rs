@@ -563,7 +563,12 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                                     message: Default::default(),
                                     request_id: Default::default(),
                                 });
-                            error.to_string()
+                            let mut err_str = String::new();
+                            if let Some(code) = &error.error_code {
+                                err_str.push_str(&format!("{}: ", code));
+                            }
+                            err_str.push_str(&error.message);
+                            err_str.trim().trim_end_matches(':').to_string()
                         } else {
                             kerr.to_string()
                         }
