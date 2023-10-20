@@ -202,7 +202,7 @@ struct General;
 struct Owner;
 
 #[group]
-#[allowed_roles("KittyCAD Staff")]
+#[allowed_roles("kittycad staff")]
 // Limit all commands to be guild-restricted.
 #[only_in(guilds)]
 #[commands(design, latency, ping)]
