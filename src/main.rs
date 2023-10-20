@@ -544,8 +544,10 @@ async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             };
 
             let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
+            // Some times users say `design me` trim the `me ` to not confuse the model.
+            let cleaned = content.trim_start_matches("me ");
 
-            if let Err(err) = run_text_to_cad_prompt(ctx, msg, &content).await {
+            if let Err(err) = run_text_to_cad_prompt(ctx, msg, cleaned).await {
                 // If the error was from the API, let's handle it better for each type of error.
                 let e = match err.downcast_ref::<kittycad::types::error::Error>() {
                     Some(kerr) => {
