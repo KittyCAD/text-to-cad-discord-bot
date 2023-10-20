@@ -99,6 +99,8 @@ pub enum SubCommand {
     Server(Server),
     /// Convert a gltf file to an image.
     ConvertImage(ConvertImage),
+    /// A subcommand for just getting an image for a prompt.
+    TextToCad(TextToCad),
 }
 
 /// A subcommand for running the server.
@@ -139,6 +141,18 @@ pub struct ConvertImage {
     /// Path to the output image file.
     #[clap(short, long = "image-path")]
     pub image_path: std::path::PathBuf,
+}
+
+/// A subcommand for just getting an image for a prompt.
+#[derive(Parser, Clone, Debug)]
+pub struct TextToCad {
+    /// The prompt to use.
+    #[clap(short, long)]
+    pub prompt: String,
+
+    /// The KittyCAD API token to use.
+    #[clap(long, env = "KITTYCAD_API_TOKEN")]
+    pub kittycad_api_token: String,
 }
 
 // A container type is created for inserting into the Client's `data`, which
@@ -409,9 +423,25 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
         }
 
         SubCommand::ConvertImage(c) => {
-            let image_bytes = crate::image::model_to_image(&c.gltf_path).await?;
+            let logger = opts.create_logger("convert-image");
+            let image_bytes = crate::image::model_to_image(&logger, &c.gltf_path).await?;
 
             tokio::fs::write(&c.image_path, image_bytes).await?;
+        }
+        SubCommand::TextToCad(t) => {
+            let logger = opts.create_logger("text-to-cad");
+
+            let mut users_client = kittycad::Client::new(&t.kittycad_api_token);
+            users_client.set_base_url("https://api.dev.kittycad.io");
+
+            let (image_file, mut model) = get_image_bytes_for_prompt(&logger, &users_client, &t.prompt)
+                .await
+                .unwrap();
+
+            // Clear the outputs so we don't print them.
+            model.outputs = Default::default();
+            slog::info!(logger, "Model: {:?}", model);
+            slog::info!(logger, "Image file: {:?}", image_file);
         }
     }
 
@@ -560,7 +590,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
                             image_path.file_name().unwrap().to_string_lossy()
                         ))
                         // Thumbs up or down emoji.
-                        .footer(|f| f.text("Add a 👍 or 👎 to this message to give feedback."))
+                        .footer(|f| f.text("React with a 👍 or 👎 to this message to give feedback."))
                         // Add a timestamp for the current time
                         // This also accepts a rfc3339 Timestamp
                         .timestamp(serenity::model::Timestamp::now())
@@ -768,7 +798,7 @@ async fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::pa
         anyhow::bail!("Convert image failed: {:?}", output);
     }
 
-    slog::debug!(logger, "Convert image output: {:?}", output);
+    slog::info!(logger, "Convert image output: {:?}", output);
 
     // Remove the gltf file.
     tokio::fs::remove_file(&gltf_path).await?;

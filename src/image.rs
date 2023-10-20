@@ -5,26 +5,14 @@ use three_d::Geometry;
 use three_d_asset::io::Serialize;
 
 /// Convert a model into bytes for an image.
-pub async fn model_to_image(gltf_file: &std::path::PathBuf) -> Result<Vec<u8>> {
-    let mut raw_asset = three_d_asset::io::load_async(&[gltf_file]).await?;
+pub async fn model_to_image(logger: &slog::Logger, gltf_file: &std::path::PathBuf) -> Result<Vec<u8>> {
+    let mut cpu_model: three_d::CpuModel = three_d_asset::io::load_and_deserialize_async(&gltf_file).await?;
 
     let viewport = three_d::Viewport::new_at_origo(1280, 720);
 
     // Create a headless graphics context
     let context = three_d::HeadlessContext::new()?;
 
-    // Create a camera
-    let mut camera = three_d::Camera::new_orthographic(
-        viewport,
-        three_d::vec3(2.0, 1.0, 2.0),
-        three_d::vec3(0.0, 0.0, 0.0),
-        three_d::vec3(0.0, 1.0, 0.0),
-        1.0,
-        0.1,
-        15.0,
-    );
-
-    let mut cpu_model: three_d::CpuModel = raw_asset.deserialize("")?; // Empty string implies load the first.
     cpu_model.geometries.iter_mut().for_each(|m| m.compute_tangents());
     let model = three_d::Model::<three_d::DeferredPhysicalMaterial>::new(&context, &cpu_model)?;
 
@@ -34,6 +22,7 @@ pub async fn model_to_image(gltf_file: &std::path::PathBuf) -> Result<Vec<u8>> {
     }
 
     let size = aabb.size();
+    slog::info!(logger, "size: {:?}", size);
     let min = aabb.min() + three_d::vec3(size.x * 0.1, size.y * 0.1, size.z * 0.4);
     let max = aabb.max() - three_d::vec3(size.x * 0.1, size.y * 0.3, size.z * 0.4);
     let lightbox = three_d::AxisAlignedBoundingBox::new_with_positions(&[min, max]);
@@ -42,15 +31,32 @@ pub async fn model_to_image(gltf_file: &std::path::PathBuf) -> Result<Vec<u8>> {
         lightbox.min().y + 8.0 * lightbox.size().y,
         lightbox.min().z + 8.0 * lightbox.size().z,
     );
+    slog::info!(logger, "light: {:?}", pos);
     let light = three_d::PointLight::new(
         &context,
-        1.0,
+        0.4,
         three_d::Srgba::WHITE,
         &pos,
         three_d::Attenuation::default(),
     );
 
-    camera.zoom_towards(&three_d::vec3(0.0, 0.0, 0.0), 1.0, 0.0, size.z * 10.0);
+    // Create a camera
+    let camera_pos = three_d::vec3(
+        lightbox.min().x + 8.0 * lightbox.size().x,
+        lightbox.min().y + 8.0 * lightbox.size().y,
+        lightbox.min().z + 8.0 * lightbox.size().z,
+    );
+    slog::info!(logger, "camera_pos: {:?}", camera_pos);
+    let mut camera = three_d::Camera::new_orthographic(
+        viewport,
+        three_d::vec3(camera_pos.x, camera_pos.y, camera_pos.z),
+        three_d::vec3(0.0, 0.0, 0.0),
+        three_d::vec3(0.0, camera_pos.y, 0.0),
+        camera_pos.y,
+        0.1,
+        1.0,
+    );
+    camera.rotate_around_with_fixed_up(&three_d::vec3(0.0, 0.0, 0.0), 5.0, 0.0);
 
     // Create a color texture to render into
     let mut texture = three_d::Texture2D::new_empty::<[u8; 4]>(
