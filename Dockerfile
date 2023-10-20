@@ -60,4 +60,4 @@ ARG BUILD_MODE=debug
 COPY --from=linkerd /tmp/linkerd-await /usr/bin/linkerd-await
 COPY --from=cargo-build /usr/src/text-to-cad-discord-bot/target/${BUILD_MODE}/text-to-cad-discord-bot /usr/bin/text-to-cad-discord-bot
 
-CMD ["text-to-cad-discord-bot", "--json", "--debug", "server"]
+CMD ["text-to-cad-discord-bot", "--json", "server"]
