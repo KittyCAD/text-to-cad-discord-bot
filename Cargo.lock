@@ -768,7 +768,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 [[package]]
 name = "dropshot"
 version = "0.9.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#b250ce792468c58511710c16149b05dcd92c9939"
+source = "git+https://github.com/oxidecomputer/dropshot?branch=main#7bd2ce547ebf0b955b02236fe3fef0c52bf2fae4"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -785,7 +785,7 @@ dependencies = [
  "hyper",
  "indexmap 2.0.2",
  "multer",
- "openapiv3",
+ "openapiv3 2.0.0-rc.1",
  "paste",
  "percent-encoding",
  "proc-macro2",
@@ -813,7 +813,7 @@ dependencies = [
 [[package]]
 name = "dropshot_endpoint"
 version = "0.9.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#b250ce792468c58511710c16149b05dcd92c9939"
+source = "git+https://github.com/oxidecomputer/dropshot?branch=main#7bd2ce547ebf0b955b02236fe3fef0c52bf2fae4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2060,7 +2060,7 @@ dependencies = [
  "heck",
  "indexmap 2.0.2",
  "lazy_static",
- "openapiv3",
+ "openapiv3 1.0.3",
  "regex",
 ]
 
@@ -2069,6 +2069,17 @@ name = "openapiv3"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75e56d5c441965b6425165b7e3223cc933ca469834f4a8b4786817a1f9dc4f13"
+dependencies = [
+ "indexmap 2.0.2",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "openapiv3"
+version = "2.0.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25316406f0191559189c56d99731b63130775de7284d98df5e976ce67882ca8a"
 dependencies = [
  "indexmap 2.0.2",
  "serde",
@@ -3405,7 +3416,7 @@ dependencies = [
  "lazy_static",
  "log",
  "openapi-lint",
- "openapiv3",
+ "openapiv3 1.0.3",
  "portpicker",
  "pretty_assertions",
  "reqwest",
