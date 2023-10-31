@@ -8,7 +8,7 @@ edition = "2021"
 anyhow = { version = "1.0.75", features = [] }
 clap = { version = "4.4.7", features = ["cargo", "derive", "env", "unicode"] }
 dropshot = { git = "https://github.com/oxidecomputer/dropshot", branch = "main" }
-kittycad = "0.2.38"
+kittycad = "0.2.41"
 lazy_static = "1.4.0"
 log = { version = "0.4.20", features = ["serde"] }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
