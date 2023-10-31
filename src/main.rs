@@ -624,6 +624,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     // Show that we are done working on it.
     msg.react(ctx, '🥳').await?;
 
+    let feedback_time_seconds = 120;
     let our_msg = msg
         .channel_id
         .send_message(&ctx.http, |m| {
@@ -636,7 +637,15 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
                             image_path.file_name().unwrap().to_string_lossy()
                         ))
                         // Thumbs up or down emoji.
-                        .footer(|f| f.text("React with a 👍 or 👎 to this message to give feedback."))
+                        .footer(|f| {
+                            f.text(&format!(
+                                r#"React with a 👍 or 👎 to this message to give feedback.
+Feedback must be left within the next {} seconds.
+After that, the original prompter can login to view their model or give feedback at:
+https://https://text-to-cad.kittycad.io/view/{}"#,
+                                feedback_time_seconds, model.id
+                            ))
+                        })
                         // Add a timestamp for the current time
                         // This also accepts a rfc3339 Timestamp
                         .timestamp(serenity::model::Timestamp::now())
@@ -655,7 +664,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .await_reaction(ctx)
         .author_id(msg.author.id)
         .added(true)
-        .timeout(std::time::Duration::from_secs(120))
+        .timeout(std::time::Duration::from_secs(feedback_time_seconds))
         .filter(|reaction| {
             reaction.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string())
                 || reaction.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string())
