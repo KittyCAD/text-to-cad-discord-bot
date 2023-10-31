@@ -642,7 +642,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
                                 r#"React with a 👍 or 👎 to this message to give feedback.
 Feedback must be left within the next {} seconds.
 After that, the original prompter can login to view their model or give feedback at:
-https://https://text-to-cad.kittycad.io/view/{}"#,
+https://text-to-cad.kittycad.io/view/{}"#,
                                 feedback_time_seconds, model.id
                             ))
                         })
