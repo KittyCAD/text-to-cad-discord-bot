@@ -630,7 +630,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .send_message(&ctx.http, |m| {
             let message = m
                 .content(&format!(
-                    "{}, you can login to view their model or give feedback at:
+                    "{}, you can login to view your model or give feedback at:
 https://text-to-cad.kittycad.io/view/{}",
                     msg.author.mention(),
                     model.id
