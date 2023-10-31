@@ -629,7 +629,12 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         .channel_id
         .send_message(&ctx.http, |m| {
             let message = m
-                .content(msg.author.mention())
+                .content(&format!(
+                    "{}, you can login to view their model or give feedback at:
+https://text-to-cad.kittycad.io/view/{}",
+                    msg.author.mention(),
+                    model.id
+                ))
                 .embed(|e| {
                     e.title(prompt)
                         .image(&format!(
@@ -640,10 +645,8 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
                         .footer(|f| {
                             f.text(&format!(
                                 r#"React with a 👍 or 👎 to this message to give feedback.
-Feedback must be left within the next {} seconds.
-After that, the original prompter can login to view their model or give feedback at:
-https://text-to-cad.kittycad.io/view/{}"#,
-                                feedback_time_seconds, model.id
+Feedback must be left within the next {} seconds."#,
+                                feedback_time_seconds
                             ))
                         })
                         // Add a timestamp for the current time
