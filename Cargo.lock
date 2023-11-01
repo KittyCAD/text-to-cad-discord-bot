@@ -785,7 +785,7 @@ dependencies = [
  "hyper",
  "indexmap 2.0.2",
  "multer",
- "openapiv3 2.0.0-rc.1",
+ "openapiv3",
  "paste",
  "percent-encoding",
  "proc-macro2",
@@ -2055,24 +2055,13 @@ checksum = "44d11de466f4a3006fe8a5e7ec84e93b79c70cb992ae0aa0eb631ad2df8abfe2"
 [[package]]
 name = "openapi-lint"
 version = "0.4.0"
-source = "git+https://github.com/oxidecomputer/openapi-lint?branch=main#bb69a3a4a184d966bac2a0df2be5c9038d9867d0"
+source = "git+https://github.com/oxidecomputer/openapi-lint?branch=main#ef442ee4343e97b6d9c217d3e7533962fe7d7236"
 dependencies = [
  "heck",
  "indexmap 2.0.2",
  "lazy_static",
- "openapiv3 1.0.3",
+ "openapiv3",
  "regex",
-]
-
-[[package]]
-name = "openapiv3"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75e56d5c441965b6425165b7e3223cc933ca469834f4a8b4786817a1f9dc4f13"
-dependencies = [
- "indexmap 2.0.2",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3416,7 +3405,7 @@ dependencies = [
  "lazy_static",
  "log",
  "openapi-lint",
- "openapiv3 1.0.3",
+ "openapiv3",
  "portpicker",
  "pretty_assertions",
  "reqwest",
