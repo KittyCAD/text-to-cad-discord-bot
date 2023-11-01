@@ -49,10 +49,10 @@ pub async fn model_to_image(logger: &slog::Logger, gltf_file: &std::path::PathBu
     slog::info!(logger, "camera_pos: {:?}", camera_pos);
     let mut camera = three_d::Camera::new_orthographic(
         viewport,
-        three_d::vec3(camera_pos.x, camera_pos.y, camera_pos.z),
-        three_d::vec3(0.0, 0.0, 0.0),
-        three_d::vec3(0.0, camera_pos.y, 0.0),
-        camera_pos.y,
+        three_d::vec3(size.x * 0.5, size.y * 0.5, size.z * 0.5),
+        aabb.center(),
+        three_d::vec3(0.0, size.y * 5.0, 0.0),
+        size.y * 5.0,
         0.1,
         1.0,
     );
