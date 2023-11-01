@@ -20,43 +20,37 @@ pub async fn model_to_image(logger: &slog::Logger, gltf_file: &std::path::PathBu
     for m in model.iter() {
         aabb.expand_with_aabb(&m.aabb());
     }
-
-    let size = aabb.size();
-    slog::info!(logger, "size: {:?}", size);
-    let min = aabb.min() + three_d::vec3(size.x * 0.1, size.y * 0.1, size.z * 0.4);
-    let max = aabb.max() - three_d::vec3(size.x * 0.1, size.y * 0.3, size.z * 0.4);
-    let lightbox = three_d::AxisAlignedBoundingBox::new_with_positions(&[min, max]);
-    let pos = three_d::vec3(
-        lightbox.min().x + 8.0 * lightbox.size().x,
-        lightbox.min().y + 8.0 * lightbox.size().y,
-        lightbox.min().z + 8.0 * lightbox.size().z,
-    );
-    slog::info!(logger, "light: {:?}", pos);
-    let light = three_d::PointLight::new(
-        &context,
-        0.4,
-        three_d::Srgba::WHITE,
-        &pos,
-        three_d::Attenuation::default(),
-    );
+    slog::info!(logger, "aabb: {:?}", aabb);
 
     // Create a camera
     let camera_pos = three_d::vec3(
-        lightbox.min().x + 8.0 * lightbox.size().x,
-        lightbox.min().y + 8.0 * lightbox.size().y,
-        lightbox.min().z + 8.0 * lightbox.size().z,
+        aabb.min().x + (aabb.max().x / 4.0) * 0.1,
+        aabb.min().y + (aabb.max().y / 4.0) * 0.1,
+        aabb.min().z + (aabb.max().z / 4.0) * 0.1,
     );
     slog::info!(logger, "camera_pos: {:?}", camera_pos);
-    let mut camera = three_d::Camera::new_orthographic(
+    slog::info!(logger, "center: {:?}", aabb.center());
+    let camera = three_d::Camera::new_orthographic(
         viewport,
-        three_d::vec3(size.x * 0.5, size.y * 0.5, size.z * 0.5),
+        camera_pos,
         aabb.center(),
-        three_d::vec3(0.0, size.y * 5.0, 0.0),
-        size.y * 5.0,
-        0.1,
-        1.0,
+        three_d::vec3(0.0, aabb.max().y * 3.0, 0.0),
+        aabb.max().y * 10.0,
+        aabb.min().z * 0.5,
+        aabb.max().z * 10.0,
     );
-    camera.rotate_around_with_fixed_up(&three_d::vec3(0.0, 0.0, 0.0), 5.0, 0.0);
+
+    let light = three_d::PointLight::new(
+        &context,
+        0.5,
+        three_d::Srgba::WHITE,
+        &three_d::vec3(
+            aabb.center().x + aabb.min().x * 5.0,
+            aabb.center().y + aabb.min().y * 5.0,
+            aabb.center().z + aabb.min().z * 5.0,
+        ),
+        three_d::Attenuation::default(),
+    );
 
     // Create a color texture to render into
     let mut texture = three_d::Texture2D::new_empty::<[u8; 4]>(
