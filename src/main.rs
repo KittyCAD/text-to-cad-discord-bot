@@ -686,20 +686,12 @@ Feedback must be left within the next {} seconds."#,
 
             if let Some(ai_reaction) = reaction {
                 // Send our feedback on the model.
-                match users_client
+                users_client
                     .ai()
                     .create_text_to_cad_model_feedback(ai_reaction, model.id)
-                    .await
-                {
-                    Ok(_) => {
-                        // Let the user know we got their feedback.
-                        our_msg.react(ctx, '🧠').await?;
-                    }
-                    Err(err) => {
-                        // In some cases a different user might try to add feedback.
-                        slog::warn!(logger, "Error sending feedback: {}", err);
-                    }
-                }
+                    .await?;
+                // Let the user know we got their feedback.
+                our_msg.react(ctx, '🧠').await?;
             }
         }
     }
