@@ -52,16 +52,14 @@ pub async fn create_server(
         default_handler_task_mode: dropshot::HandlerTaskMode::CancelOnDisconnect,
     };
 
-    let api_context = Arc::new(Context::new(schema, opts.create_logger("server"), s.clone()).await?);
+    let logger = opts.create_logger("server");
+    let dropshot_logger = logger.new(slog::o!("component" => "dropshot"));
 
-    let server = HttpServerStarter::new(
-        &config_dropshot,
-        api,
-        api_context.clone(),
-        &opts.create_logger("dropshot"),
-    )
-    .map_err(|error| anyhow!("failed to create server: {}", error))?
-    .start();
+    let api_context = Arc::new(Context::new(schema, logger, s.clone()).await?);
+
+    let server = HttpServerStarter::new(&config_dropshot, api, api_context.clone(), &dropshot_logger)
+        .map_err(|error| anyhow!("failed to create server: {}", error))?
+        .start();
 
     Ok((server, api_context))
 }
