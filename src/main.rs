@@ -9,10 +9,13 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-use std::{borrow::Borrow, collections::HashSet, sync::Arc};
+use std::{borrow::Borrow, collections::HashSet, str::FromStr, sync::Arc};
 
 use anyhow::{bail, Result};
 use clap::Parser;
+use parse_display::{Display, FromStr};
+use sentry::IntoDsn;
+use serde::{Deserialize, Serialize};
 use serenity::{
     async_trait,
     client::bridge::gateway::{ShardId, ShardManager},
@@ -281,6 +284,30 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, _com
     }
 }
 
+/// The environment the server is running in.
+#[derive(Display, FromStr, Copy, Eq, PartialEq, Debug, Deserialize, Serialize, Clone, Ord, PartialOrd)]
+#[serde(rename_all = "UPPERCASE")]
+#[display(style = "UPPERCASE")]
+pub enum Environment {
+    /// The development environment. This is for running locally.
+    Development,
+    /// The preview environment. This is when PRs are created and a service is deployed for testing.
+    Preview,
+    /// The production environment.
+    Production,
+}
+
+impl Environment {
+    /// Returns the current environment as parsed from the `SENTRY_ENV` environment variable.
+    #[tracing::instrument]
+    pub fn get() -> Self {
+        match std::env::var("SENTRY_ENV") {
+            Ok(en) => Self::from_str(&en.to_uppercase()).unwrap_or(Environment::Development),
+            Err(_) => Environment::Development,
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
@@ -326,8 +353,45 @@ async fn main() -> Result<()> {
         )
     };
 
+    // Generate events on Errors and Warnings.
+    let sentry_layer = sentry::integrations::tracing::layer().event_filter(|md| match *md.level() {
+        tracing::Level::ERROR => sentry::integrations::tracing::EventFilter::Event,
+        tracing::Level::WARN => sentry::integrations::tracing::EventFilter::Event,
+        _ => sentry::integrations::tracing::EventFilter::Ignore,
+    });
+
     // Initialize the Sentry tracing.
-    tracing_subscriber::registry().with(json).with(plain).init();
+    tracing_subscriber::registry()
+        .with(json)
+        .with(plain)
+        .with(sentry_layer)
+        .init();
+
+    let git_hash = git_rev::revision_string!();
+    let environment = Environment::get();
+    let sentry_dsn = if environment == Environment::Development {
+        None
+    } else {
+        Some("https://c1f8b4df10fe3881b5642a159a82b0af@o1042111.ingest.sentry.io/4506163635027968")
+    }
+    .into_dsn()?;
+    let _guard = sentry::init(sentry::ClientOptions {
+        debug: opts.debug,
+        dsn: sentry_dsn,
+        // Send 50% of all transactions to Sentry.
+        traces_sample_rate: 0.5,
+
+        release: Some(git_hash.into()),
+        environment: Some(environment.to_string().to_lowercase().into()),
+
+        // We want to send 100% of errors to Sentry.
+        sample_rate: 1.0,
+
+        default_integrations: true,
+
+        session_mode: sentry::SessionMode::Request,
+        ..sentry::ClientOptions::default()
+    });
 
     if let Err(err) = run_cmd(&opts).await {
         bail!("running cmd `{:?}` failed: {:?}", &opts.subcmd, err);

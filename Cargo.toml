@@ -8,11 +8,14 @@ edition = "2021"
 anyhow = { version = "1.0.75", features = [] }
 clap = { version = "4.4.7", features = ["cargo", "derive", "env", "unicode"] }
 dropshot = { git = "https://github.com/oxidecomputer/dropshot", branch = "main" }
+git_rev = "0.1.0"
 kittycad = "0.2.41"
 lazy_static = "1.4.0"
 log = { version = "0.4.20", features = ["serde"] }
+parse-display = "0.8.2"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 schemars = { version = "0.8", features = ["chrono", "uuid1"] }
+sentry = { version = "0.31", default-features = false, features = ["anyhow", "backtrace", "panic", "contexts", "debug-images", "tracing", "log", "slog", "rustls", "reqwest"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.108"
 serenity = {version = "0.11.7", features = ["collector", "framework", "standard_framework"]}
@@ -24,6 +27,7 @@ slog-term = "2.9.0"
 three-d = { version = "0.16.2", default-features = false, features = ["headless"] }
 three-d-asset = { version = "0.6.0", features = ["png", "gltf", "data-url"] }
 tokio = { version = "1.33.0", features = ["full"] }
+tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["registry", "std", "fmt", "smallvec", "ansi", "tracing-log", "json"] }
 uuid = { version = "1.5.0", features = ["v4", "serde"] }
 
