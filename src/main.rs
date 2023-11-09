@@ -428,10 +428,6 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                     c.with_whitespace(true)
                         .on_mention(Some(bot_id.id))
                         .prefix("~")
-                        // In this case, if "," would be first, a message would never
-                        // be delimited at ", ", forcing you to trim your arguments if you
-                        // want to avoid whitespaces at the start of each.
-                        .delimiters(vec![", ", ","])
                         // Sets the bot's owners. These will be used for commands that
                         // are owners only.
                         .owners(owners)
