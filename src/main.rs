@@ -428,6 +428,8 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                     c.with_whitespace(true)
                         .on_mention(Some(bot_id.id))
                         .prefix("~")
+                        // We literally don't want any delimiters.
+                        .delimiters(vec!["^^"])
                         // Sets the bot's owners. These will be used for commands that
                         // are owners only.
                         .owners(owners)
