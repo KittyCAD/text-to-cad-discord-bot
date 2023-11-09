@@ -36,6 +36,8 @@ use serenity::{
 use slog::Drain;
 use tracing_subscriber::{prelude::*, Layer};
 
+const DELIMITER: &str = "^^";
+
 lazy_static::lazy_static! {
 /// Initialize the logger.
     // We need a slog::Logger for steno and when we export out the logs from re-exec-ed processes.
@@ -429,7 +431,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                         .on_mention(Some(bot_id.id))
                         .prefix("~")
                         // We literally don't want any delimiters.
-                        .delimiters(vec!["^^"])
+                        .delimiters(vec![DELIMITER])
                         // Sets the bot's owners. These will be used for commands that
                         // are owners only.
                         .owners(owners)
@@ -582,87 +584,84 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[description = "Generate a CAD model from a text prompt."]
 #[example = "design a 2x4 lego"]
-async fn design(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn design(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let logger = data.get::<Logger>().ok_or(anyhow::anyhow!("Logger not found"))?;
 
-    match args.single_quoted::<String>() {
-        Ok(x) => {
-            // React to the message that we are working on it.
-            // We want to use unicode eyes.
-            msg.react(ctx, '👀').await?;
+    let x = args.message().to_string();
+    // React to the message that we are working on it.
+    // We want to use unicode eyes.
+    msg.react(ctx, '👀').await?;
 
-            let settings = if let Some(guild_id) = msg.guild_id {
-                // By default roles, users, and channel mentions are cleaned.
-                ContentSafeOptions::default()
-                    // We do not want to clean channel mentions as they
-                    // do not ping users.
-                    .clean_channel(false)
-                    // If it's a guild channel, we want mentioned users to be displayed
-                    // as their display name.
-                    .display_as_member_from(guild_id)
-            } else {
-                ContentSafeOptions::default().clean_channel(false).clean_role(false)
-            };
+    let settings = if let Some(guild_id) = msg.guild_id {
+        // By default roles, users, and channel mentions are cleaned.
+        ContentSafeOptions::default()
+            // We do not want to clean channel mentions as they
+            // do not ping users.
+            .clean_channel(false)
+            // If it's a guild channel, we want mentioned users to be displayed
+            // as their display name.
+            .display_as_member_from(guild_id)
+    } else {
+        ContentSafeOptions::default().clean_channel(false).clean_role(false)
+    };
 
-            let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
-            // Some times users say `design me` trim the `me ` to not confuse the model.
-            let cleaned = content.trim_start_matches("me ");
+    let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
+    // Some times users say `design me` trim the `me ` to not confuse the model.
+    let cleaned = content.trim_matches('"').trim_start_matches("me ");
 
-            if let Err(err) = run_text_to_cad_prompt(ctx, msg, cleaned).await {
-                // If the error was from the API, let's handle it better for each type of error.
-                let e = match err.downcast_ref::<kittycad::types::error::Error>() {
-                    Some(kerr) => {
-                        if let kittycad::types::error::Error::Server { body, status } = kerr {
-                            // Get the body of the response.
-                            let error: kittycad::types::Error =
-                                serde_json::from_str(body).unwrap_or(kittycad::types::Error {
-                                    error_code: Some(status.to_string()),
-                                    message: Default::default(),
-                                    request_id: Default::default(),
-                                });
-                            let mut err_str = String::new();
-                            if let Some(code) = &error.error_code {
-                                err_str.push_str(&format!("{}: ", code));
-                            }
-                            err_str.push_str(&error.message);
+    if cleaned.is_empty() {
+        msg.reply(ctx, "🫠 An argument is required to run this command.")
+            .await?;
+        return Ok(());
+    }
 
-                            err_str.trim().trim_end_matches(':').to_string()
-                        } else {
-                            kerr.to_string()
-                        }
+    if let Err(err) = run_text_to_cad_prompt(ctx, msg, cleaned).await {
+        // If the error was from the API, let's handle it better for each type of error.
+        let e = match err.downcast_ref::<kittycad::types::error::Error>() {
+            Some(kerr) => {
+                if let kittycad::types::error::Error::Server { body, status } = kerr {
+                    // Get the body of the response.
+                    let error: kittycad::types::Error = serde_json::from_str(body).unwrap_or(kittycad::types::Error {
+                        error_code: Some(status.to_string()),
+                        message: Default::default(),
+                        request_id: Default::default(),
+                    });
+                    let mut err_str = String::new();
+                    if let Some(code) = &error.error_code {
+                        err_str.push_str(&format!("{}: ", code));
                     }
+                    err_str.push_str(&error.message);
 
-                    None => err.to_string(),
-                };
-
-                slog::warn!(logger, "Error running text to cad prompt: {}", e);
-                let message = format!("🤮 {}", e);
-                // TRuncate the message to the first 2000 characters.
-                let message = &message[..std::cmp::min(message.len(), 2000)];
-
-                if e.contains("User has not authenticated") {
-                    // Give a special emoji for this error.
-                    msg.react(ctx, '🔒').await?;
-                    // Send the message as a DM so we don't spam the channel.
-                    msg.author.direct_message(ctx, |m| m.content(message)).await?;
-
-                    // Return early so we don't send the message to the channel.
-                    return Ok(());
+                    err_str.trim().trim_end_matches(':').to_string()
+                } else {
+                    kerr.to_string()
                 }
-
-                msg.reply(ctx, &message).await?;
-                msg.react(ctx, '🤮').await?;
             }
 
+            None => err.to_string(),
+        };
+
+        slog::warn!(logger, "Error running text to cad prompt: {}", e);
+        let message = format!("🤮 {}", e);
+        // TRuncate the message to the first 2000 characters.
+        let message = &message[..std::cmp::min(message.len(), 2000)];
+
+        if e.contains("User has not authenticated") {
+            // Give a special emoji for this error.
+            msg.react(ctx, '🔒').await?;
+            // Send the message as a DM so we don't spam the channel.
+            msg.author.direct_message(ctx, |m| m.content(message)).await?;
+
+            // Return early so we don't send the message to the channel.
             return Ok(());
         }
-        Err(_) => {
-            msg.reply(ctx, "🫠 An argument is required to run this command.")
-                .await?;
-            return Ok(());
-        }
-    };
+
+        msg.reply(ctx, &message).await?;
+        msg.react(ctx, '🤮').await?;
+    }
+
+    return Ok(());
 }
 
 async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> Result<()> {
