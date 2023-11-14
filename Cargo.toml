@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.75", features = [] }
-clap = { version = "4.4.7", features = ["cargo", "derive", "env", "unicode"] }
+clap = { version = "4.4.8", features = ["cargo", "derive", "env", "unicode"] }
 dropshot = { git = "https://github.com/oxidecomputer/dropshot", branch = "main" }
 git_rev = "0.1.0"
 kittycad = "0.2.41"
