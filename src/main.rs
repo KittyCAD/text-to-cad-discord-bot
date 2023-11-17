@@ -2,6 +2,7 @@
 
 #![deny(missing_docs)]
 
+mod engine;
 mod image;
 #[macro_use]
 mod enclose;
@@ -146,6 +147,10 @@ pub struct ConvertImage {
     /// Path to the output image file.
     #[clap(short, long = "image-path")]
     pub image_path: std::path::PathBuf,
+
+    /// The KittyCAD API token to use.
+    #[clap(long, env = "KITTYCAD_API_TOKEN")]
+    pub kittycad_api_token: String,
 }
 
 /// A subcommand for just getting an image for a prompt.
@@ -498,15 +503,20 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
 
         SubCommand::ConvertImage(c) => {
             let logger = opts.create_logger("convert-image");
-            let image_bytes = crate::image::model_to_image(&logger, &c.gltf_path).await?;
+
+            let users_client = kittycad::Client::new(&c.kittycad_api_token);
+
+            // Read the contents of the file.
+            let contents = tokio::fs::read(&c.gltf_path).await?;
+
+            let image_bytes = crate::image::model_to_image(&logger, &users_client, &contents).await?;
 
             tokio::fs::write(&c.image_path, image_bytes).await?;
         }
         SubCommand::TextToCad(t) => {
             let logger = opts.create_logger("text-to-cad");
 
-            let mut users_client = kittycad::Client::new(&t.kittycad_api_token);
-            users_client.set_base_url("https://api.dev.kittycad.io");
+            let users_client = kittycad::Client::new(&t.kittycad_api_token);
 
             let (image_file, mut model) = get_image_bytes_for_prompt(&logger, &users_client, &t.prompt)
                 .await
@@ -875,71 +885,29 @@ async fn get_image_bytes_for_prompt(
     }
 
     // This is CPU bound so let's force it on another thread.
-    let image_path = gltf_to_image(logger, &gltf_bytes).await?;
+    let image_path = gltf_to_image(logger, users_client, &gltf_bytes).await?;
 
     Ok((image_path, model))
 }
 
 /// Re-execute ourselves to convert the gltf file to an image.
 // We do this because the graphics lib we are using forces you to use the main thread.
-async fn gltf_to_image(logger: &slog::Logger, contents: &[u8]) -> Result<std::path::PathBuf> {
+async fn gltf_to_image(
+    logger: &slog::Logger,
+    users_client: &kittycad::Client,
+    contents: &[u8],
+) -> Result<std::path::PathBuf> {
     // Create a temp file.
     let temp_dir = std::env::temp_dir();
-    let gltf_path = temp_dir.join(format!("{}.gltf", uuid::Uuid::new_v4()));
     let image_path = temp_dir.join(format!("{}.png", uuid::Uuid::new_v4()));
 
-    // Write the gltf bytes to the file.
-    tokio::fs::write(&gltf_path, contents).await?;
+    let image_contents = crate::image::model_to_image(logger, users_client, contents).await?;
 
-    let mut command = tokio::process::Command::new(path_to_self()?);
-    let mut args = vec![
-        "convert-image".to_string(),
-        "--gltf-path".to_string(),
-        gltf_path.to_string_lossy().to_string(),
-        "--image-path".to_string(),
-        image_path.to_string_lossy().to_string(),
-    ];
-    if cfg!(target_os = "linux") {
-        // We need to run with a virtual x server.
-        command = tokio::process::Command::new("xvfb-run");
-        // Push an arg to the front of args.
-        args.insert(0, "-a".to_string());
-        args.insert(1, path_to_self()?.to_string_lossy().to_string());
-    }
-    // Re-execute ourselves to convert the gltf file to an image.
-    let output = command
-        .args(args)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        slog::warn!(logger, "Convert image failed: {:?}", output);
-        anyhow::bail!("Convert image failed: {:?}", output);
-    }
-
-    slog::info!(logger, "Convert image output: {:?}", output);
-
-    // Remove the gltf file.
-    tokio::fs::remove_file(&gltf_path).await?;
+    // Write the image to the temp file.
+    tokio::fs::write(&image_path, image_contents).await?;
 
     // Return the image path.
     Ok(image_path)
-}
-
-#[cfg(test)]
-fn path_to_self() -> Result<std::path::PathBuf> {
-    let path = std::env::current_dir()?
-        .join("target")
-        .join("debug")
-        .join("text-to-cad-discord-bot");
-    Ok(path)
-}
-
-#[cfg(not(test))]
-fn path_to_self() -> Result<std::path::PathBuf> {
-    Ok(std::env::current_exe()?)
 }
 
 #[cfg(test)]
