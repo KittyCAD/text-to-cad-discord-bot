@@ -145,7 +145,7 @@ impl EngineConnection {
 
         // Wait for the response.
         let current_time = std::time::Instant::now();
-        while current_time.elapsed().as_secs() < 240 {
+        while current_time.elapsed().as_secs() < 60 {
             // We pop off the responses to cleanup our mappings.
             if let Some((_, resp)) = self.responses.remove(&id) {
                 return if let Some(data) = &resp.resp {
