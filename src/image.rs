@@ -3,7 +3,7 @@
 use anyhow::Result;
 
 /// Convert a model into bytes for an image.
-pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, gltf_file: &[u8]) -> Result<Vec<u8>> {
+pub async fn model_to_image(logger: &slog::Logger, client: &kittycad::Client, gltf_file: &[u8]) -> Result<Vec<u8>> {
     let ws = client
         .modeling()
         .commands_ws(None, None, None, None, Some(false))
@@ -12,6 +12,7 @@ pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, g
     let engine = crate::engine::EngineConnection::new(ws).await?;
 
     // Send an import request to the engine.
+    slog::info!(logger, "Sending import request to engine");
     let resp = engine
         .send_modeling_cmd(
             uuid::Uuid::new_v4(),
@@ -35,6 +36,7 @@ pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, g
     let object_id = data.object_id;
 
     // Zoom on the object.
+    slog::info!(logger, "Sending zoom request to engine");
     engine
         .send_modeling_cmd(
             uuid::Uuid::new_v4(),
@@ -43,6 +45,7 @@ pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, g
         .await?;
 
     // Send a snapshot request to the engine.
+    slog::info!(logger, "Sending snapshot request to engine");
     let resp = engine
         .send_modeling_cmd(
             uuid::Uuid::new_v4(),
