@@ -12,7 +12,7 @@ pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, g
     let engine = crate::engine::EngineConnection::new(ws).await?;
 
     // Send an import request to the engine.
-    engine
+    let resp = engine
         .send_modeling_cmd(
             uuid::Uuid::new_v4(),
             kittycad::types::ModelingCmd::ImportFiles {
@@ -22,6 +22,23 @@ pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, g
                 }],
                 format: kittycad::types::InputFormat::Gltf {},
             },
+        )
+        .await?;
+
+    let kittycad::types::OkWebSocketResponseData::Modeling {
+        modeling_response: kittycad::types::OkModelingCmdResponse::ImportFiles { data },
+    } = &resp
+    else {
+        anyhow::bail!("Unexpected response from engine import: {:?}", resp);
+    };
+
+    let object_id = data.object_id;
+
+    // Zoom on the object.
+    engine
+        .send_modeling_cmd(
+            uuid::Uuid::new_v4(),
+            kittycad::types::ModelingCmd::DefaultCameraFocusOn { uuid: object_id },
         )
         .await?;
 
@@ -39,7 +56,7 @@ pub async fn model_to_image(_logger: &slog::Logger, client: &kittycad::Client, g
         modeling_response: kittycad::types::OkModelingCmdResponse::TakeSnapshot { data },
     } = &resp
     else {
-        anyhow::bail!("Unexpected response from engine: {:?}", resp);
+        anyhow::bail!("Unexpected response from engine snapshot: {:?}", resp);
     };
 
     Ok(data.contents.0.to_vec())
