@@ -10,7 +10,7 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-use std::{borrow::Borrow, collections::HashSet, str::FromStr, sync::Arc};
+use std::{collections::HashSet, str::FromStr, sync::Arc};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -19,12 +19,12 @@ use sentry::IntoDsn;
 use serde::{Deserialize, Serialize};
 use serenity::{
     async_trait,
-    client::bridge::gateway::{ShardId, ShardManager},
     framework::standard::{
         help_commands,
         macros::{command, group, help, hook},
         Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
     },
+    gateway::ShardManager,
     http::Http,
     model::{
         channel::Message,
@@ -171,7 +171,7 @@ pub struct TextToCad {
 struct ShardManagerContainer;
 
 impl TypeMapKey for ShardManagerContainer {
-    type Value = Arc<Mutex<ShardManager>>;
+    type Value = Arc<ShardManager>;
 }
 
 struct KittycadApi;
@@ -424,23 +424,13 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             let mut owners = HashSet::new();
             if let Some(team) = info.team {
                 owners.insert(team.owner_user_id);
-            } else {
-                owners.insert(info.owner.id);
+            } else if let Some(owner) = info.owner {
+                owners.insert(owner.id);
             }
             let bot_id = http.get_current_user().await?;
 
             // Set up the framework.
             let framework = StandardFramework::new()
-                .configure(|c| {
-                    c.with_whitespace(true)
-                        .on_mention(Some(bot_id.id))
-                        .prefix("~")
-                        // We literally don't want any delimiters.
-                        .delimiters(vec![DELIMITER])
-                        // Sets the bot's owners. These will be used for commands that
-                        // are owners only.
-                        .owners(owners)
-                })
                 // Set a function to be called prior to each command execution. This
                 // provides the context of the command, the message that was received,
                 // and the full name of the command that will be called.
@@ -473,6 +463,17 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 .group(&GENERAL_GROUP)
                 .group(&KITTYCADSTAFF_GROUP)
                 .group(&OWNER_GROUP);
+            framework.configure(
+                serenity::framework::standard::Configuration::new()
+                    .with_whitespace(true)
+                    .on_mention(Some(bot_id.id))
+                    .prefix("~")
+                    // We literally don't want any delimiters.
+                    .delimiters(vec![DELIMITER])
+                    // Sets the bot's owners. These will be used for commands that
+                    // are owners only.
+                    .owners(owners),
+            );
 
             // For this example to run properly, the "Presence Intent" and "Server Members Intent"
             // options need to be enabled.
@@ -546,36 +547,33 @@ async fn about(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[num_args(0)]
 async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
-    // The shard manager is an interface for mutating, stopping, restarting, and
-    // retrieving information about shards.
+    // The shard manager is an interface for mutating, stopping, restarting, and retrieving
+    // information about shards.
     let data = ctx.data.read().await;
 
     let shard_manager = match data.get::<ShardManagerContainer>() {
         Some(v) => v,
         None => {
-            msg.reply(ctx, "‼️  There was a problem getting the shard manager")
-                .await?;
+            msg.reply(ctx, "There was a problem getting the shard manager").await?;
 
             return Ok(());
         }
     };
 
-    let manager = shard_manager.lock().await;
-    let runners = manager.runners.lock().await;
+    let runners = shard_manager.runners.lock().await;
 
-    // Shards are backed by a "shard runner" responsible for processing events
-    // over the shard, so we'll get the information about the shard runner for
-    // the shard this command was sent over.
-    let runner = match runners.get(&ShardId(ctx.shard_id)) {
+    // Shards are backed by a "shard runner" responsible for processing events over the shard, so
+    // we'll get the information about the shard runner for the shard this command was sent over.
+    let runner = match runners.get(&ctx.shard_id) {
         Some(runner) => runner,
         None => {
-            msg.reply(ctx, "‼️  No shard found").await?;
+            msg.reply(ctx, "No shard found").await?;
 
             return Ok(());
         }
     };
 
-    msg.reply(ctx, &format!("💨 The shard latency is {:?}", runner.latency))
+    msg.reply(ctx, &format!("The shard latency is {:?}", runner.latency))
         .await?;
 
     Ok(())
@@ -661,13 +659,15 @@ async fn design(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             // Give a special emoji for this error.
             msg.react(ctx, '🔒').await?;
             // Send the message as a DM so we don't spam the channel.
-            msg.author.direct_message(ctx, |m| m.content(message)).await?;
+            msg.author
+                .direct_message(ctx, serenity::builder::CreateMessage::new().content(message))
+                .await?;
 
             // Return early so we don't send the message to the channel.
             return Ok(());
         }
 
-        msg.reply(ctx, &message).await?;
+        msg.reply(ctx, message).await?;
         msg.react(ctx, '🤮').await?;
     }
 
@@ -684,13 +684,14 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     // Get a token for the user based on their discord id.
     let kittycad_token = kittycad_client
         .meta()
-        .internal_get_api_token_for_discord_user(&msg.author.id.0.to_string())
+        .internal_get_api_token_for_discord_user(&msg.author.id.get().to_string())
         .await?;
     // Now create a new kittycad client with the user's token.
     let users_client = kittycad::Client::new(kittycad_token.token);
 
     // This is CPU bound so let's force it on another thread.
-    let (image_path, model) = get_image_bytes_for_prompt(logger, &users_client, prompt).await?;
+    let (image_bytes, model) = get_image_bytes_for_prompt(logger, &users_client, prompt).await?;
+    let image_name = format!("{}.png", model.id);
 
     // Show that we are done working on it.
     msg.react(ctx, '🥳').await?;
@@ -698,46 +699,37 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     let feedback_time_seconds = 120;
     let our_msg = msg
         .channel_id
-        .send_message(&ctx.http, |m| {
-            let message = m
+        .send_message(
+            &ctx.http,
+            serenity::builder::CreateMessage::new()
                 .content(&format!(
                     "{}, you can login to view your model or give feedback at:
 https://text-to-cad.kittycad.io/view/{}",
                     msg.author.mention(),
                     model.id
                 ))
-                .embed(|e| {
-                    e.title(prompt)
-                        .image(&format!(
-                            "attachment://{}",
-                            image_path.file_name().unwrap().to_string_lossy()
-                        ))
+                .embed(
+                    serenity::builder::CreateEmbed::new()
+                        .title(prompt)
+                        .image(&format!("attachment://{}", image_name))
                         // Thumbs up or down emoji.
-                        .footer(|f| {
-                            f.text(&format!(
-                                r#"React with a 👍 or 👎 to this message to give feedback.
+                        .footer(serenity::builder::CreateEmbedFooter::new(&format!(
+                            r#"React with a 👍 or 👎 to this message to give feedback.
 Feedback must be left within the next {} seconds."#,
-                                feedback_time_seconds
-                            ))
-                        })
+                            feedback_time_seconds
+                        )))
                         // Add a timestamp for the current time
                         // This also accepts a rfc3339 Timestamp
-                        .timestamp(serenity::model::Timestamp::now())
-                })
-                .add_file(&image_path);
-            slog::info!(logger, "Sending message: {:?}", message);
-            message
-        })
+                        .timestamp(serenity::model::Timestamp::now()),
+                )
+                .add_file(serenity::builder::CreateAttachment::bytes(image_bytes, image_name)),
+        )
         .await?;
 
-    // Remove the file.
-    tokio::fs::remove_file(&image_path).await?;
-
     // Wait for feedback to the model based on emoji reaction.
-    let reaction = our_msg
+    let collector = our_msg
         .await_reaction(ctx)
         .author_id(msg.author.id)
-        .added(true)
         .timeout(std::time::Duration::from_secs(feedback_time_seconds))
         .filter(|reaction| {
             reaction.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string())
@@ -745,25 +737,24 @@ Feedback must be left within the next {} seconds."#,
         })
         .await;
 
-    if let Some(feedback) = reaction {
-        if let serenity::collector::reaction_collector::ReactionAction::Added(added) = feedback.borrow() {
-            let reaction = if added.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string()) {
-                Some(kittycad::types::AiFeedback::ThumbsUp)
-            } else if added.emoji == serenity::model::channel::ReactionType::Unicode("👎".to_string()) {
-                Some(kittycad::types::AiFeedback::ThumbsDown)
-            } else {
-                None
-            };
+    if let Some(reaction) = collector {
+        let emoji = reaction.emoji.as_data();
+        let reaction = if emoji == "👍" {
+            Some(kittycad::types::AiFeedback::ThumbsUp)
+        } else if emoji == "👎" {
+            Some(kittycad::types::AiFeedback::ThumbsDown)
+        } else {
+            None
+        };
 
-            if let Some(ai_reaction) = reaction {
-                // Send our feedback on the model.
-                users_client
-                    .ai()
-                    .create_text_to_cad_model_feedback(ai_reaction, model.id)
-                    .await?;
-                // Let the user know we got their feedback.
-                our_msg.react(ctx, '🧠').await?;
-            }
+        if let Some(ai_reaction) = reaction {
+            // Send our feedback on the model.
+            users_client
+                .ai()
+                .create_text_to_cad_model_feedback(ai_reaction, model.id)
+                .await?;
+            // Let the user know we got their feedback.
+            our_msg.react(ctx, '🧠').await?;
         }
     }
     // TODO: add export button.
@@ -775,7 +766,7 @@ async fn get_image_bytes_for_prompt(
     logger: &slog::Logger,
     users_client: &kittycad::Client,
     prompt: &str,
-) -> Result<(std::path::PathBuf, kittycad::types::TextToCad)> {
+) -> Result<(Vec<u8>, kittycad::types::TextToCad)> {
     slog::debug!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
@@ -884,30 +875,9 @@ async fn get_image_bytes_for_prompt(
         anyhow::bail!("Your design completed, but no gltf outputs were found");
     }
 
-    // This is CPU bound so let's force it on another thread.
-    let image_path = gltf_to_image(logger, users_client, &gltf_bytes).await?;
+    let image_contents = crate::image::model_to_image(logger, users_client, &gltf_bytes).await?;
 
-    Ok((image_path, model))
-}
-
-/// Re-execute ourselves to convert the gltf file to an image.
-// We do this because the graphics lib we are using forces you to use the main thread.
-async fn gltf_to_image(
-    logger: &slog::Logger,
-    users_client: &kittycad::Client,
-    contents: &[u8],
-) -> Result<std::path::PathBuf> {
-    // Create a temp file.
-    let temp_dir = std::env::temp_dir();
-    let image_path = temp_dir.join(format!("{}.png", uuid::Uuid::new_v4()));
-
-    let image_contents = crate::image::model_to_image(logger, users_client, contents).await?;
-
-    // Write the image to the temp file.
-    tokio::fs::write(&image_path, image_contents).await?;
-
-    // Return the image path.
-    Ok(image_path)
+    Ok((image_contents, model))
 }
 
 #[cfg(test)]
@@ -927,17 +897,10 @@ mod test {
         let mut kittycad_client = kittycad::Client::new_from_env();
         kittycad_client.set_base_url("https://api.dev.kittycad.io");
 
-        let (image_file, _model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
+        let (image_bytes, _model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
             .await
             .unwrap();
 
-        // Make sure the file exists.
-        assert!(image_file.exists());
-
-        // Read the contents of the file.
-        let image_bytes = std::fs::read(&image_file).unwrap();
         assert!(!image_bytes.is_empty());
-
-        std::fs::remove_file(&image_file).unwrap();
     }
 }
