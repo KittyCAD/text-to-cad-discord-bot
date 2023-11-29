@@ -1,82 +1,27 @@
 {
-  "components": {
-    "responses": {
-      "Error": {
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        },
-        "description": "Error"
-      }
-    },
-    "schemas": {
-      "Error": {
-        "description": "Error information from a response.",
-        "properties": {
-          "error_code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "request_id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message",
-          "request_id"
-        ],
-        "type": "object"
-      },
-      "Pong": {
-        "description": "The response from the `/ping` endpoint.",
-        "properties": {
-          "message": {
-            "description": "The pong response.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
-        ],
-        "type": "object"
-      },
-      "UserConsentUrl": {
-        "properties": {
-          "url": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      }
-    }
-  },
+  "openapi": "3.0.3",
   "info": {
-    "contact": {
-      "email": "discord@kittycad.io",
-      "url": "https://kittycad.io"
-    },
-    "description": "A discord bot to play with the KittyCAD Text to CAD API.",
     "title": "KittyCAD Text to CAD Discord Bot",
+    "description": "A discord bot to play with the KittyCAD Text to CAD API.",
+    "contact": {
+      "url": "https://kittycad.io",
+      "email": "discord@kittycad.io"
+    },
     "version": "0.1.0"
   },
-  "openapi": "3.0.3",
   "paths": {
     "/": {
       "get": {
+        "summary": "Return the OpenAPI schema in JSON format.",
         "operationId": "api_get_schema",
         "responses": {
           "200": {
+            "description": "successful operation",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            },
-            "description": "successful operation"
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -84,12 +29,12 @@
           "5XX": {
             "$ref": "#/components/responses/Error"
           }
-        },
-        "summary": "Return the OpenAPI schema in JSON format."
+        }
       }
     },
     "/auth/discord/callback": {
       "get": {
+        "summary": "Listen for callbacks to Discord auth.",
         "operationId": "listen_auth_discord_callback",
         "parameters": [
           {
@@ -109,6 +54,7 @@
         ],
         "responses": {
           "202": {
+            "description": "successfully enqueued operation",
             "content": {
               "application/json": {
                 "schema": {
@@ -116,8 +62,7 @@
                   "type": "string"
                 }
               }
-            },
-            "description": "successfully enqueued operation"
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -125,23 +70,23 @@
           "5XX": {
             "$ref": "#/components/responses/Error"
           }
-        },
-        "summary": "Listen for callbacks to Discord auth."
+        }
       }
     },
     "/auth/discord/consent": {
       "get": {
+        "summary": "Get the consent URL for Discord auth.",
         "operationId": "listen_auth_discord_consent",
         "responses": {
           "200": {
+            "description": "successful operation",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserConsentUrl"
                 }
               }
-            },
-            "description": "successful operation"
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -149,23 +94,23 @@
           "5XX": {
             "$ref": "#/components/responses/Error"
           }
-        },
-        "summary": "Get the consent URL for Discord auth."
+        }
       }
     },
     "/ping": {
       "get": {
+        "summary": "Return pong.",
         "operationId": "ping",
         "responses": {
           "200": {
+            "description": "successful operation",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Pong"
                 }
               }
-            },
-            "description": "successful operation"
+            }
           },
           "4XX": {
             "$ref": "#/components/responses/Error"
@@ -173,8 +118,63 @@
           "5XX": {
             "$ref": "#/components/responses/Error"
           }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "description": "Error information from a response.",
+        "type": "object",
+        "properties": {
+          "error_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
         },
-        "summary": "Return pong."
+        "required": [
+          "message",
+          "request_id"
+        ]
+      },
+      "Pong": {
+        "description": "The response from the `/ping` endpoint.",
+        "type": "object",
+        "properties": {
+          "message": {
+            "description": "The pong response.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "UserConsentUrl": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
       }
     }
   }

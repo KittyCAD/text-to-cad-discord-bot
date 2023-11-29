@@ -916,7 +916,7 @@ mod test {
 
     use crate::get_image_bytes_for_prompt;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_image_from_prompt() {
         let logger = {
             let decorator = slog_term::PlainDecorator::new(slog_term::TestStdoutWriter);
