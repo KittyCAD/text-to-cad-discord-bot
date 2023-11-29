@@ -86,7 +86,7 @@ pub async fn server(s: &crate::Server, opts: &crate::Opts) -> Result<()> {
     let mut signals = Signals::new([SIGINT, SIGTERM])?;
 
     tokio::spawn(async move {
-        for sig in signals.forever() {
+        if let Some(sig) = signals.forever().next() {
             info!("received signal: {:?}", sig);
             info!("triggering cleanup...");
 
