@@ -605,7 +605,7 @@ dependencies = [
 [[package]]
 name = "dropshot"
 version = "0.9.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#98f311ef1ad63e4c22589bcff3e02c9fe736b8d5"
+source = "git+https://github.com/oxidecomputer/dropshot?branch=main#3e3d59aa5bdb96ab4f995972adac2de69da2c812"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -650,7 +650,7 @@ dependencies = [
 [[package]]
 name = "dropshot_endpoint"
 version = "0.9.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#98f311ef1ad63e4c22589bcff3e02c9fe736b8d5"
+source = "git+https://github.com/oxidecomputer/dropshot?branch=main#3e3d59aa5bdb96ab4f995972adac2de69da2c812"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1809,9 +1809,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.69"
+version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134c189feb4956b20f6f547d2cf727d4c0fe06722b20a0eec87ed445a97f92da"
+checksum = "39278fbbf5fb4f646ce651690877f89d1c5811a3d4acb27700c1cb3cdb78fd3b"
 dependencies = [
  "unicode-ident",
 ]
