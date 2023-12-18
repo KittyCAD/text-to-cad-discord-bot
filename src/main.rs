@@ -519,9 +519,8 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
 
             let users_client = kittycad::Client::new(&t.kittycad_api_token);
 
-            let (image_file, mut model) = get_image_bytes_for_prompt(&logger, &users_client, &t.prompt)
-                .await
-                .unwrap();
+            let mut model = get_model_for_prompt(&logger, &users_client, &t.prompt).await?;
+            let image_file = get_image_bytes_for_model(&logger, &users_client, &model).await?;
 
             // Clear the outputs so we don't print them.
             model.outputs = Default::default();
@@ -689,8 +688,26 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     // Now create a new kittycad client with the user's token.
     let users_client = kittycad::Client::new(kittycad_token.token);
 
-    // This is CPU bound so let's force it on another thread.
-    let (image_bytes, model) = get_image_bytes_for_prompt(logger, &users_client, prompt).await?;
+    let model = get_model_for_prompt(logger, &users_client, prompt).await?;
+    let image_bytes = match get_image_bytes_for_model(logger, &users_client, &model).await {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            slog::warn!(logger, "Error getting image bytes: {}", err);
+            msg.channel_id
+                .send_message(
+                    &ctx.http,
+                    serenity::builder::CreateMessage::new().content(&format!(
+                        "{}, you can login to view your model or give feedback at:
+https://text-to-cad.zoo.dev/view/{}\n\nUnfortunately, we were unable to generate an image for your model. But you can still login to view it.\n\n```\n{}```\n",
+                        msg.author.mention(),
+                        model.id,
+                        err
+                    )),
+                )
+                .await?;
+            return Ok(());
+        }
+    };
     let image_name = format!("{}.png", model.id);
 
     // Show that we are done working on it.
@@ -704,7 +721,7 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
             serenity::builder::CreateMessage::new()
                 .content(&format!(
                     "{}, you can login to view your model or give feedback at:
-https://text-to-cad.kittycad.io/view/{}",
+https://text-to-cad.zoo.dev/view/{}",
                     msg.author.mention(),
                     model.id
                 ))
@@ -762,11 +779,11 @@ Feedback must be left within the next {} seconds."#,
     Ok(())
 }
 
-async fn get_image_bytes_for_prompt(
+async fn get_model_for_prompt(
     logger: &slog::Logger,
     users_client: &kittycad::Client,
     prompt: &str,
-) -> Result<(Vec<u8>, kittycad::types::TextToCad)> {
+) -> Result<kittycad::types::TextToCad> {
     slog::debug!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
@@ -861,6 +878,14 @@ async fn get_image_bytes_for_prompt(
     // Okay, we successfully got a model!
     slog::debug!(logger, "Design completed: {:?}", model.prompt);
 
+    Ok(model)
+}
+
+async fn get_image_bytes_for_model(
+    logger: &slog::Logger,
+    users_client: &kittycad::Client,
+    model: &kittycad::types::TextToCad,
+) -> Result<Vec<u8>> {
     // Get the gltf bytes.
     let mut gltf_bytes = vec![];
     if let Some(outputs) = &model.outputs {
@@ -877,14 +902,14 @@ async fn get_image_bytes_for_prompt(
 
     let image_contents = crate::image::model_to_image(logger, users_client, &gltf_bytes).await?;
 
-    Ok((image_contents, model))
+    Ok(image_contents)
 }
 
 #[cfg(test)]
 mod test {
     use slog::Drain;
 
-    use crate::get_image_bytes_for_prompt;
+    use crate::{get_image_bytes_for_model, get_model_for_prompt};
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_get_image_from_prompt() {
@@ -895,9 +920,13 @@ mod test {
             slog::Logger::root(drain, slog::o!())
         };
         let mut kittycad_client = kittycad::Client::new_from_env();
-        kittycad_client.set_base_url("https://api.dev.kittycad.io");
+        kittycad_client.set_base_url("https://api.dev.zoo.dev");
 
-        let (image_bytes, _model) = get_image_bytes_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
+        let model = get_model_for_prompt(&logger, &kittycad_client, "a 2x4 lego")
+            .await
+            .unwrap();
+
+        let image_bytes = get_image_bytes_for_model(&logger, &kittycad_client, &model)
             .await
             .unwrap();
 
