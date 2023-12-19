@@ -199,14 +199,15 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(about)]
+#[only_in(guilds)]
+#[commands(about, design)]
 struct General;
 
 #[group]
 #[owners_only]
 // Limit all commands to be guild-restricted.
 #[only_in(guilds)]
-#[commands(design, latency, ping)]
+#[commands(latency, ping)]
 // Summary only appears when listing multiple groups.
 #[summary = "Commands for server owners"]
 struct Owner;
@@ -215,7 +216,7 @@ struct Owner;
 #[allowed_roles("kittycad staff")]
 // Limit all commands to be guild-restricted.
 #[only_in(guilds)]
-#[commands(design, latency, ping)]
+#[commands(latency, ping)]
 // Summary only appears when listing multiple groups.
 #[summary = "Commands for KittyCAD staff"]
 struct KittyCadStaff;
