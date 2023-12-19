@@ -259,11 +259,25 @@ async fn after(ctx: &Context, _msg: &Message, command_name: &str, command_result
 }
 
 #[hook]
-async fn unknown_command(ctx: &Context, _msg: &Message, unknown_command_name: &str) {
+async fn unknown_command(ctx: &Context, msg: &Message, unknown_command_name: &str) {
     let data = ctx.data.read().await;
     let logger = data.get::<Logger>().unwrap().clone();
 
     slog::info!(logger, "Could not find command named '{}'", unknown_command_name);
+
+    if let Err(err) = msg
+        .author
+        .direct_message(
+            ctx,
+            serenity::builder::CreateMessage::new().content(&format!(
+                "Could not find command `{}`, try `design` as your command.",
+                unknown_command_name
+            )),
+        )
+        .await
+    {
+        slog::warn!(logger, "Error sending dm message to user: {}", err);
+    }
 }
 
 #[hook]
