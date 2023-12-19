@@ -822,7 +822,7 @@ async fn get_model_for_prompt(
     // more than enough!
     while status != kittycad::types::ApiCallStatus::Completed
         && status != kittycad::types::ApiCallStatus::Failed
-        && start.elapsed().as_secs() < 60 * 10
+        && start.elapsed().as_secs() < 60 * 5
     {
         slog::debug!(logger, "Polling for design status: {}", status);
 
