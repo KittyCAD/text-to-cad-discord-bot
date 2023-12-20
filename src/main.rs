@@ -877,7 +877,7 @@ async fn get_model_for_prompt(
     if model.status == kittycad::types::ApiCallStatus::Failed {
         if let Some(error) = model.error {
             slog::warn!(logger, "Design failed: {}", error);
-            anyhow::bail!("Your prompt returned an error: {}", error);
+            anyhow::bail!("Your prompt returned an error: ```\n{}\n```", error);
         } else {
             slog::warn!(logger, "Design failed: {:?}", model);
             anyhow::bail!("Your prompt returned an error, but no error message. :(");
