@@ -213,12 +213,12 @@ struct General;
 struct Owner;
 
 #[group]
-#[allowed_roles("kittycad staff")]
+#[allowed_roles("zoo staff")]
 // Limit all commands to be guild-restricted.
 #[only_in(guilds)]
 #[commands(latency, ping)]
 // Summary only appears when listing multiple groups.
-#[summary = "Commands for KittyCAD staff"]
+#[summary = "Commands for Zoo staff"]
 struct KittyCadStaff;
 
 // The framework provides two built-in help commands for you to use.
