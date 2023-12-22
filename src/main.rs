@@ -213,13 +213,13 @@ struct General;
 struct Owner;
 
 #[group]
-#[allowed_roles("zoo staff")]
+#[allowed_roles("zookeepers")]
 // Limit all commands to be guild-restricted.
 #[only_in(guilds)]
 #[commands(latency, ping)]
 // Summary only appears when listing multiple groups.
 #[summary = "Commands for Zoo staff"]
-struct KittyCadStaff;
+struct Zookeepers;
 
 // The framework provides two built-in help commands for you to use.
 // But you can also make your own customized help command that forwards
@@ -476,7 +476,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 // #name is turned all uppercase
                 .help(&BOT_HELP)
                 .group(&GENERAL_GROUP)
-                .group(&KITTYCADSTAFF_GROUP)
+                .group(&ZOOKEEPERS_GROUP)
                 .group(&OWNER_GROUP);
             framework.configure(
                 serenity::framework::standard::Configuration::new()
