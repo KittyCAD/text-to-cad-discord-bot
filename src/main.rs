@@ -377,10 +377,7 @@ async fn main() -> Result<()> {
     };
 
     // Initialize the Sentry tracing.
-    tracing_subscriber::registry()
-        .with(json)
-        .with(plain)
-        .init();
+    tracing_subscriber::registry().with(json).with(plain).init();
 
     if let Err(err) = run_cmd(&opts).await {
         bail!("running cmd `{:?}` failed: {:?}", &opts.subcmd, err);
