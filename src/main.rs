@@ -333,6 +333,7 @@ impl Environment {
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
+    let environment = Environment::get();
 
     let level_filter = if opts.debug {
         tracing_subscriber::filter::LevelFilter::DEBUG
@@ -375,45 +376,8 @@ async fn main() -> Result<()> {
         )
     };
 
-    // Generate events on Errors and Warnings.
-    let sentry_layer = sentry::integrations::tracing::layer().event_filter(|md| match *md.level() {
-        tracing::Level::ERROR => sentry::integrations::tracing::EventFilter::Event,
-        tracing::Level::WARN => sentry::integrations::tracing::EventFilter::Event,
-        _ => sentry::integrations::tracing::EventFilter::Ignore,
-    });
-
     // Initialize the Sentry tracing.
-    tracing_subscriber::registry()
-        .with(json)
-        .with(plain)
-        .with(sentry_layer)
-        .init();
-
-    let git_hash = git_rev::revision_string!();
-    let environment = Environment::get();
-    let sentry_dsn = if environment == Environment::Development {
-        None
-    } else {
-        Some("https://c1f8b4df10fe3881b5642a159a82b0af@o1042111.ingest.sentry.io/4506163635027968")
-    }
-    .into_dsn()?;
-    let _guard = sentry::init(sentry::ClientOptions {
-        debug: opts.debug,
-        dsn: sentry_dsn,
-        // Send 50% of all transactions to Sentry.
-        traces_sample_rate: 0.5,
-
-        release: Some(git_hash.into()),
-        environment: Some(environment.to_string().to_lowercase().into()),
-
-        // We want to send 100% of errors to Sentry.
-        sample_rate: 1.0,
-
-        default_integrations: true,
-
-        session_mode: sentry::SessionMode::Request,
-        ..sentry::ClientOptions::default()
-    });
+    tracing_subscriber::registry().with(json).with(plain).init();
 
     if let Err(err) = run_cmd(&opts).await {
         bail!("running cmd `{:?}` failed: {:?}", &opts.subcmd, err);
