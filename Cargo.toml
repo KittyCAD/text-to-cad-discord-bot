@@ -12,7 +12,7 @@ dashmap = "5.5.3"
 dropshot = { git = "https://github.com/oxidecomputer/dropshot", branch = "main" }
 futures = "0.3"
 git_rev = "0.1.0"
-kittycad = "0.2.44"
+kittycad = "0.2.49"
 lazy_static = "1.4.0"
 log = { version = "0.4.20", features = ["serde"] }
 parse-display = "0.8.2"
