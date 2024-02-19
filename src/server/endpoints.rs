@@ -72,7 +72,7 @@ pub async fn listen_auth_discord_consent(
                     "guilds",
                     "guilds.members.read",
                  ].join("%20"),
-                serenity::model::gateway::GatewayIntents::all().bits(),
+                poise::serenity_prelude::GatewayIntents::all().bits(),
         ),
     }))
 }

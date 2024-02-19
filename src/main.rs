@@ -10,33 +10,21 @@ mod server;
 #[cfg(test)]
 mod tests;
 
-use std::{collections::HashSet, str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use anyhow::{bail, Result};
 use clap::Parser;
 use parse_display::{Display, FromStr};
+use poise::serenity_prelude::{self as serenity, prelude::*, GatewayIntents};
 use serde::{Deserialize, Serialize};
-use serenity::{
-    async_trait,
-    framework::standard::{
-        help_commands,
-        macros::{command, group, help, hook},
-        Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
-    },
-    gateway::ShardManager,
-    http::Http,
-    model::{
-        channel::Message,
-        gateway::{GatewayIntents, Ready},
-        id::UserId,
-    },
-    prelude::*,
-    utils::{content_safe, ContentSafeOptions},
-};
 use slog::Drain;
 use tracing_subscriber::{prelude::*, Layer};
 
-const DELIMITER: &str = "^^";
+struct Data {
+    logger: slog::Logger,
+    client: kittycad::Client,
+}
+type Context<'a> = poise::Context<'a, Data, anyhow::Error>;
 
 lazy_static::lazy_static! {
 /// Initialize the logger.
@@ -164,145 +152,54 @@ pub struct TextToCad {
     pub kittycad_api_token: String,
 }
 
-// A container type is created for inserting into the Client's `data`, which
-// allows for data to be accessible across all events and framework commands, or
-// anywhere else that has a copy of the `data` Arc.
-struct ShardManagerContainer;
-
-impl TypeMapKey for ShardManagerContainer {
-    type Value = Arc<ShardManager>;
-}
-
-struct KittycadApi;
-
-impl TypeMapKey for KittycadApi {
-    type Value = kittycad::Client;
-}
-
-struct Logger;
-
-impl TypeMapKey for Logger {
-    type Value = slog::Logger;
-}
-
-struct Handler;
-
-#[async_trait]
-impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, ready: Ready) {
-        let data = ctx.data.read().await;
-        let logger = data.get::<Logger>().unwrap().clone();
-
-        slog::info!(logger, "{} is connected!", ready.user.name);
-    }
-}
-
-#[group]
-#[only_in(guilds)]
-#[commands(about, design)]
-struct General;
-
-#[group]
-#[owners_only]
-// Limit all commands to be guild-restricted.
-#[only_in(guilds)]
-#[commands(latency, ping)]
-// Summary only appears when listing multiple groups.
-#[summary = "Commands for server owners"]
-struct Owner;
-
-#[group]
-#[allowed_roles("zookeepers")]
-// Limit all commands to be guild-restricted.
-#[only_in(guilds)]
-#[commands(latency, ping)]
-// Summary only appears when listing multiple groups.
-#[summary = "Commands for Zoo staff"]
-struct Zookeepers;
-
-// The framework provides two built-in help commands for you to use.
-// But you can also make your own customized help command that forwards
-// to the behaviour of either of them.
-#[help]
-async fn bot_help(
-    context: &Context,
-    msg: &Message,
-    args: Args,
-    help_options: &'static HelpOptions,
-    groups: &[&'static CommandGroup],
-    owners: HashSet<UserId>,
-) -> CommandResult {
-    let _ = help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
-    Ok(())
-}
-
-#[hook]
-async fn before(ctx: &Context, msg: &Message, command_name: &str) -> bool {
-    let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().unwrap().clone();
-
-    slog::info!(logger, "Got command '{}' by user '{}'", command_name, msg.author.name);
-
-    true // if `before` returns false, command processing doesn't happen.
-}
-
-#[hook]
-async fn after(ctx: &Context, _msg: &Message, command_name: &str, command_result: CommandResult) {
-    let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().unwrap().clone();
-
-    match command_result {
-        Ok(()) => slog::info!(logger, "Processed command '{}'", command_name),
-        Err(why) => slog::info!(logger, "Command '{}' returned error {:?}", command_name, why),
-    }
-}
-
-#[hook]
-async fn unknown_command(ctx: &Context, msg: &Message, unknown_command_name: &str) {
-    let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().unwrap().clone();
-
-    slog::info!(logger, "Could not find command named '{}'", unknown_command_name);
-
-    if let Err(err) = msg
-        .author
-        .direct_message(
-            ctx,
-            serenity::builder::CreateMessage::new().content(&format!(
-                "Could not find command `{}`, try `design` as your command.",
-                unknown_command_name
-            )),
-        )
-        .await
-    {
-        slog::warn!(logger, "Error sending dm message to user: {}", err);
-    }
-}
-
-#[hook]
-async fn normal_message(ctx: &Context, msg: &Message) {
-    let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().unwrap().clone();
-
-    slog::debug!(logger, "Message is not a command '{}'", msg.content);
-}
-
-#[hook]
-async fn delay_action(ctx: &Context, msg: &Message) {
-    // You may want to handle a Discord rate limit if this fails.
-    let _ = msg.react(ctx, '⏱').await;
-}
-
-#[hook]
-async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, _command_name: &str) {
-    if let DispatchError::Ratelimited(info) = error {
-        // We notify them only once.
-        if info.is_first_try {
-            let _ = msg
-                .reply(&ctx.http, &format!("Try this again in {} seconds.", info.as_secs()))
-                .await;
+async fn on_error(error: poise::FrameworkError<'_, Data, anyhow::Error>) {
+    // This is our custom error handler
+    // They are many errors that can occur, so we only handle the ones we want to customize
+    // and forward the rest to the default handler
+    match error {
+        poise::FrameworkError::Setup { error, .. } => panic!("Failed to start bot: {:?}", error),
+        poise::FrameworkError::Command { error, ctx, .. } => {
+            println!("Error in command `{}`: {:?}", ctx.command().name, error,);
+        }
+        error => {
+            if let Err(e) = poise::builtins::on_error(error).await {
+                println!("Error while handling error: {}", e)
+            }
         }
     }
+}
+
+/// Show help message.
+#[poise::command(prefix_command, track_edits, slash_command, category = "Utility")]
+pub async fn help(
+    ctx: Context<'_>,
+    #[description = "Command to get help for"]
+    #[rest]
+    mut command: Option<String>,
+) -> Result<()> {
+    // This makes it possible to just make `help` a subcommand of any command
+    // `/fruit help` turns into `/help fruit`
+    // `/fruit help apple` turns into `/help fruit apple`
+    if ctx.invoked_command_name() != "help" {
+        command = match command {
+            Some(c) => Some(format!("{} {}", ctx.invoked_command_name(), c)),
+            None => Some(ctx.invoked_command_name().to_string()),
+        };
+    }
+    let extra_text_at_bottom = "\
+Type `?help command` for more info on a command.
+You can edit your `?help` message to the bot and the bot will edit its response.";
+
+    let config = poise::samples::HelpConfiguration {
+        show_subcommands: true,
+        show_context_menu_commands: true,
+        ephemeral: true,
+        extra_text_at_bottom,
+
+        ..Default::default()
+    };
+    poise::builtins::help(ctx, command.as_deref(), config).await?;
+    Ok(())
 }
 
 /// The environment the server is running in.
@@ -393,64 +290,51 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
                 Ok::<(), anyhow::Error>(())
             }});
 
-            // Login with a bot token from the environment
-            let http = Http::new(&s.discord_token);
-
-            // We will fetch your bot's owners and id
-            let info = http.get_current_application_info().await?;
-            let mut owners = HashSet::new();
-            if let Some(team) = info.team {
-                owners.insert(team.owner_user_id);
-            } else if let Some(owner) = info.owner {
-                owners.insert(owner.id);
-            }
-            let bot_id = http.get_current_user().await?;
-
             // Set up the framework.
-            let framework = StandardFramework::new()
-                // Set a function to be called prior to each command execution. This
-                // provides the context of the command, the message that was received,
-                // and the full name of the command that will be called.
-                //
-                // Avoid using this to determine whether a specific command should be
-                // executed. Instead, prefer using the `#[check]` macro which
-                // gives you this functionality.
-                //
-                // **Note**: Async closures are unstable, you may use them in your
-                // application if you are fine using nightly Rust.
-                // If not, we need to provide the function identifiers to the
-                // hook-functions (before, after, normal, ...).
-                .before(before)
-                // Similar to `before`, except will be called directly _after_
-                // command execution.
-                .after(after)
-                // Set a function that's called whenever an attempted command-call's
-                // command could not be found.
-                .unrecognised_command(unknown_command)
-                // Set a function that's called whenever a message is not a command.
-                .normal_message(normal_message)
-                // Set a function that's called whenever a command's execution didn't complete for one
-                // reason or another. For example, when a user has exceeded a rate-limit or a command
-                // can only be performed by the bot owner.
-                .on_dispatch_error(dispatch_error)
-                // The `#[group]` macro generates `static` instances of the options set for the group.
-                // They're made in the pattern: `#name_GROUP` for the group instance and `#name_GROUP_OPTIONS`.
-                // #name is turned all uppercase
-                .help(&BOT_HELP)
-                .group(&GENERAL_GROUP)
-                .group(&ZOOKEEPERS_GROUP)
-                .group(&OWNER_GROUP);
-            framework.configure(
-                serenity::framework::standard::Configuration::new()
-                    .with_whitespace(true)
-                    .on_mention(Some(bot_id.id))
-                    .prefix("~")
-                    // We literally don't want any delimiters.
-                    .delimiters(vec![DELIMITER])
-                    // Sets the bot's owners. These will be used for commands that
-                    // are owners only.
-                    .owners(owners),
-            );
+            let framework = poise::Framework::builder()
+                .options(poise::FrameworkOptions {
+                    commands: vec![ping(), latency(), design(), help()],
+                    prefix_options: poise::PrefixFrameworkOptions {
+                        prefix: Some("?".into()),
+                        ..Default::default()
+                    },
+                    // The global error handler for all error cases that may occur
+                    on_error: |error| Box::pin(on_error(error)),
+                    // This code is run before every command
+                    pre_command: |ctx| {
+                        Box::pin(async move {
+                            slog::info!(
+                                &ctx.data().logger,
+                                "Got command '{}' by user '{}'",
+                                ctx.command().qualified_name,
+                                ctx.author().name,
+                            );
+                        })
+                    },
+                    // This code is run after a command if it was successful (returned Ok)
+                    post_command: |ctx| {
+                        Box::pin(async move {
+                            slog::info!(
+                                &ctx.data().logger,
+                                "Processed command '{}'",
+                                ctx.command().qualified_name
+                            );
+                        })
+                    },
+                    ..Default::default()
+                })
+                .setup(move |ctx, ready, framework| {
+                    Box::pin(async move {
+                        let logger = crate::LOGGER.clone();
+                        slog::info!(&logger, "{} is connected!", ready.user.name);
+                        poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                        Ok(Data {
+                            logger,
+                            client: kittycad::Client::new_from_env(),
+                        })
+                    })
+                })
+                .build();
 
             // For this example to run properly, the "Presence Intent" and "Server Members Intent"
             // options need to be enabled.
@@ -459,17 +343,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             // You will need to enable these 2 options on the bot application, and possibly wait up to 5
             // minutes.
             let intents = GatewayIntents::all();
-            let mut client = Client::builder(&s.discord_token, intents)
-                .event_handler(Handler)
-                .framework(framework)
-                .await?;
-
-            {
-                let mut data = client.data.write().await;
-                data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-                data.insert::<KittycadApi>(kittycad::Client::new(&s.kittycad_api_token));
-                data.insert::<Logger>(crate::LOGGER.clone());
-            }
+            let mut client = Client::builder(&s.discord_token, intents).framework(framework).await?;
 
             // start listening for events by starting a single shard
             client.start_autosharded().await?;
@@ -509,98 +383,49 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
     Ok(())
 }
 
-#[command]
-#[num_args(0)]
-async fn about(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(&ctx.http, "A discord bot to play with the KittyCAD Text to CAD API. 🤪")
+#[poise::command(slash_command, prefix_command)]
+async fn about(ctx: Context<'_>) -> Result<()> {
+    ctx.reply("A discord bot to play with the KittyCAD Text to CAD API. 🤪")
         .await?;
 
     Ok(())
 }
 
-#[command]
-// Limit command usage to guilds.
-#[only_in(guilds)]
-#[num_args(0)]
-async fn latency(ctx: &Context, msg: &Message) -> CommandResult {
-    // The shard manager is an interface for mutating, stopping, restarting, and retrieving
-    // information about shards.
-    let data = ctx.data.read().await;
-
-    let shard_manager = match data.get::<ShardManagerContainer>() {
-        Some(v) => v,
-        None => {
-            msg.reply(ctx, "There was a problem getting the shard manager").await?;
-
-            return Ok(());
-        }
-    };
-
-    let runners = shard_manager.runners.lock().await;
-
-    // Shards are backed by a "shard runner" responsible for processing events over the shard, so
-    // we'll get the information about the shard runner for the shard this command was sent over.
-    let runner = match runners.get(&ctx.shard_id) {
-        Some(runner) => runner,
-        None => {
-            msg.reply(ctx, "No shard found").await?;
-
-            return Ok(());
-        }
-    };
-
-    msg.reply(ctx, &format!("The shard latency is {:?}", runner.latency))
+#[poise::command(slash_command, prefix_command)]
+async fn latency(ctx: Context<'_>) -> Result<()> {
+    ctx.reply(&format!("The shard latency is {:?}", ctx.ping().await))
         .await?;
 
     Ok(())
 }
 
-#[command]
-// Limit command usage to guilds.
-#[only_in(guilds)]
-#[num_args(0)]
-async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(&ctx.http, "🏓").await?;
+#[poise::command(slash_command, prefix_command)]
+async fn ping(ctx: Context<'_>) -> Result<()> {
+    ctx.reply("🏓").await?;
 
     Ok(())
 }
 
-#[command]
-#[description = "Generate a CAD model from a text prompt."]
-#[example = "design a 2x4 lego"]
-async fn design(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().ok_or(anyhow::anyhow!("Logger not found"))?;
+/// Generate a CAD model from a text prompt.
+#[poise::command(slash_command, prefix_command)]
+async fn design(
+    ctx: Context<'_>,
+    #[rest]
+    #[description = "Your design prompt"]
+    prompt: String,
+) -> Result<()> {
+    let logger = &ctx.data().logger;
 
-    let x = args.message().to_string();
     // React to the message that we are working on it.
     // We want to use unicode eyes.
-    msg.react(ctx, '👀').await?;
+    ctx.reply('👀').await?;
 
-    let settings = if let Some(guild_id) = msg.guild_id {
-        // By default roles, users, and channel mentions are cleaned.
-        ContentSafeOptions::default()
-            // We do not want to clean channel mentions as they
-            // do not ping users.
-            .clean_channel(false)
-            // If it's a guild channel, we want mentioned users to be displayed
-            // as their display name.
-            .display_as_member_from(guild_id)
-    } else {
-        ContentSafeOptions::default().clean_channel(false).clean_role(false)
-    };
-
-    let content = content_safe(&ctx.cache, x, &settings, &msg.mentions);
-    // Some times users say `design me` trim the `me ` to not confuse the model.
-    let cleaned = content.trim_matches('"').trim_start_matches("me ");
-
-    if cleaned.is_empty() {
-        msg.reply(ctx, "🫠 An argument is required to run this command.")
-            .await?;
+    if prompt.trim().is_empty() {
+        ctx.say("🫠 An argument is required to run this command.").await?;
         return Ok(());
     }
 
-    if let Err(err) = run_text_to_cad_prompt(ctx, msg, cleaned).await {
+    if let Err(err) = run_text_to_cad_prompt(&ctx, prompt.trim()).await {
         // If the error was from the API, let's handle it better for each type of error.
         let e = match err.downcast_ref::<kittycad::types::error::Error>() {
             Some(kerr) => {
@@ -633,34 +458,30 @@ async fn design(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
         if e.contains("User has not authenticated") {
             // Give a special emoji for this error.
-            msg.react(ctx, '🔒').await?;
+            ctx.reply("🔒 We sent you a DM with instructions to login.").await?;
             // Send the message as a DM so we don't spam the channel.
-            msg.author
-                .direct_message(ctx, serenity::builder::CreateMessage::new().content(message))
+            ctx.author()
+                .direct_message(ctx.http(), serenity::builder::CreateMessage::new().content(message))
                 .await?;
 
             // Return early so we don't send the message to the channel.
             return Ok(());
         }
 
-        msg.reply(ctx, message).await?;
-        msg.react(ctx, '🤮').await?;
+        ctx.reply(format!("🤮 {}", message)).await?;
     }
 
-    return Ok(());
+    Ok(())
 }
 
-async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> Result<()> {
-    let data = ctx.data.read().await;
-    let logger = data.get::<Logger>().ok_or(anyhow::anyhow!("Logger not found"))?;
-    let kittycad_client = data
-        .get::<KittycadApi>()
-        .ok_or(anyhow::anyhow!("Kittycad client not found"))?;
+async fn run_text_to_cad_prompt(ctx: &Context<'_>, prompt: &str) -> Result<()> {
+    let logger = &ctx.data().logger;
+    let kittycad_client = &ctx.data().client;
 
     // Get a token for the user based on their discord id.
     let kittycad_token = kittycad_client
         .meta()
-        .internal_get_api_token_for_discord_user(&msg.author.id.get().to_string())
+        .internal_get_api_token_for_discord_user(&ctx.author().id.get().to_string())
         .await?;
     // Now create a new kittycad client with the user's token.
     let users_client = kittycad::Client::new(kittycad_token.token);
@@ -670,13 +491,13 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
         Ok(bytes) => bytes,
         Err(err) => {
             slog::warn!(logger, "Error getting image bytes: {}", err);
-            msg.channel_id
+            ctx.channel_id()
                 .send_message(
-                    &ctx.http,
+                    &ctx.http(),
                     serenity::builder::CreateMessage::new().content(&format!(
                         "{}, you can login to view your model or give feedback at:
 https://text-to-cad.zoo.dev/view/{}\n\nUnfortunately, we were unable to generate an image for your model. But you can still login to view it.\n\n```\n{}```\n",
-                        msg.author.mention(),
+                        ctx.author().mention(),
                         model.id,
                         err
                     )),
@@ -687,19 +508,16 @@ https://text-to-cad.zoo.dev/view/{}\n\nUnfortunately, we were unable to generate
     };
     let image_name = format!("{}.png", model.id);
 
-    // Show that we are done working on it.
-    msg.react(ctx, '🥳').await?;
-
     let feedback_time_seconds = 120;
-    let our_msg = msg
-        .channel_id
+    let our_msg = ctx
+        .channel_id()
         .send_message(
-            &ctx.http,
+            &ctx.http(),
             serenity::builder::CreateMessage::new()
                 .content(&format!(
                     "{}, you can login to view your model or give feedback at:
 https://text-to-cad.zoo.dev/view/{}",
-                    msg.author.mention(),
+                    ctx.author().mention(),
                     model.id
                 ))
                 .embed(
@@ -723,7 +541,7 @@ Feedback must be left within the next {} seconds."#,
     // Wait for feedback to the model based on emoji reaction.
     let collector = our_msg
         .await_reaction(ctx)
-        .author_id(msg.author.id)
+        .author_id(ctx.author().id)
         .timeout(std::time::Duration::from_secs(feedback_time_seconds))
         .filter(|reaction| {
             reaction.emoji == serenity::model::channel::ReactionType::Unicode("👍".to_string())

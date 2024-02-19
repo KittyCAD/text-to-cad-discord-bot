@@ -418,16 +418,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "command_attr"
-version = "0.5.1"
-source = "git+https://github.com/serenity-rs/serenity?branch=current#dce30fde2908fb8fca6d9f5e3d2fae8f7c1af1a5"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "console"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1264,12 +1254,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
-name = "levenshtein"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db13adb97ab515a3691f56e4dbab09283d0b86cb45abd991d8634a9d6f501760"
-
-[[package]]
 name = "libc"
 version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1821,7 +1805,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "poise_macros",
  "regex",
- "serenity 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serenity",
  "tokio",
  "tracing",
 ]
@@ -2068,7 +2052,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
- "webpki-roots 0.25.4",
+ "webpki-roots",
  "winreg",
 ]
 
@@ -2527,39 +2511,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serenity"
-version = "0.12.0"
-source = "git+https://github.com/serenity-rs/serenity?branch=current#dce30fde2908fb8fca6d9f5e3d2fae8f7c1af1a5"
-dependencies = [
- "arrayvec",
- "async-trait",
- "base64 0.21.7",
- "bitflags 2.4.2",
- "bytes",
- "command_attr",
- "dashmap",
- "flate2",
- "futures",
- "fxhash",
- "levenshtein",
- "mime_guess",
- "parking_lot 0.12.1",
- "percent-encoding",
- "reqwest",
- "secrecy",
- "serde",
- "serde_json",
- "static_assertions",
- "time",
- "tokio",
- "tokio-tungstenite 0.21.0",
- "tracing",
- "typemap_rev",
- "url",
- "uwl",
-]
-
-[[package]]
 name = "sha1"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2704,12 +2655,6 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
-
-[[package]]
-name = "static_assertions"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"
@@ -2943,7 +2888,6 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "serenity 0.12.0 (git+https://github.com/serenity-rs/serenity?branch=current)",
  "signal-hook",
  "slog",
  "slog-async",
@@ -3108,7 +3052,7 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.24.1",
  "tungstenite 0.20.1",
- "webpki-roots 0.25.4",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -3125,7 +3069,6 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.25.0",
  "tungstenite 0.21.0",
- "webpki-roots 0.26.1",
 ]
 
 [[package]]
@@ -3456,12 +3399,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "uwl"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4bf03e0ca70d626ecc4ba6b0763b934b6f2976e8c744088bb3c1d646fbb1ad0"
-
-[[package]]
 name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3622,15 +3559,6 @@ name = "webpki-roots"
 version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3de34ae270483955a94f4b21bdaaeb83d508bb84a01435f393818edb0012009"
-dependencies = [
- "rustls-pki-types",
-]
 
 [[package]]
 name = "winapi"
