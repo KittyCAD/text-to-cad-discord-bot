@@ -666,7 +666,6 @@ async fn run_text_to_cad_prompt(ctx: &Context, msg: &Message, prompt: &str) -> R
     let users_client = kittycad::Client::new(kittycad_token.token);
 
     let model = get_model_for_prompt(logger, &users_client, prompt).await?;
-    slog::info!(logger, "Got model: {:?}", model);
     let image_bytes = match get_image_bytes_for_model(logger, &users_client, &model).await {
         Ok(bytes) => bytes,
         Err(err) => {
