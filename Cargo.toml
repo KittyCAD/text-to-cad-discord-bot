@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.75", features = [] }
-bson = { version = "2.7.0", features = ["uuid-1", "chrono"] }
+bson = { version = "2.9.0", features = ["uuid-1", "chrono"] }
 clap = { version = "4.5.1", features = ["cargo", "derive", "env", "unicode"] }
 dashmap = "5.5.3"
 dropshot = { git = "https://github.com/oxidecomputer/dropshot", branch = "main" }
