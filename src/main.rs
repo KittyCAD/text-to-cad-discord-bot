@@ -15,7 +15,6 @@ use std::{collections::HashSet, str::FromStr, sync::Arc};
 use anyhow::{bail, Result};
 use clap::Parser;
 use parse_display::{Display, FromStr};
-use sentry::IntoDsn;
 use serde::{Deserialize, Serialize};
 use serenity::{
     async_trait,
@@ -333,7 +332,6 @@ impl Environment {
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
-    let environment = Environment::get();
 
     let level_filter = if opts.debug {
         tracing_subscriber::filter::LevelFilter::DEBUG
