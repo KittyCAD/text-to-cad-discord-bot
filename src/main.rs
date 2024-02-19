@@ -472,7 +472,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
             }
 
             // start listening for events by starting a single shard
-            client.start().await?;
+            client.start_autosharded().await?;
 
             // If we get here, the client has disconnected cleanly.
             // So we should abort our handle for our server.
