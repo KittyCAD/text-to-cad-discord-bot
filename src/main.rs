@@ -171,7 +171,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, anyhow::Error>) {
 
 /// Show help message.
 #[poise::command(prefix_command, track_edits, slash_command, category = "Utility")]
-pub async fn help(
+async fn help(
     ctx: Context<'_>,
     #[description = "Command to get help for"]
     #[rest]
