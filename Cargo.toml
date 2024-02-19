@@ -16,11 +16,12 @@ kittycad = "0.2.53"
 lazy_static = "1.4.0"
 log = { version = "0.4.20", features = ["serde"] }
 parse-display = "0.9.0"
+poise = "0.6.1"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 schemars = { version = "0.8", features = ["chrono", "uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.113"
-serenity = {version = "0.12.0", default-features = false, features = ["cache", "collector", "framework", "standard_framework", "rustls_backend", "utils"]}
+serenity = {git = "https://github.com/serenity-rs/serenity", branch = "current", default-features = false, features = ["cache", "collector", "framework", "standard_framework", "rustls_backend", "utils"]}
 signal-hook = "0.3.17"
 slog = "2.7.0"
 slog-async = "2.8.0"
