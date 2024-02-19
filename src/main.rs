@@ -226,7 +226,7 @@ impl Environment {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
@@ -684,7 +684,6 @@ async fn get_image_bytes_for_model(
     users_client: &kittycad::Client,
     model: &kittycad::types::TextToCad,
 ) -> Result<Vec<u8>> {
-    anyhow::bail!("Could not generate image");
     // Get the gltf bytes.
     let mut gltf_bytes = vec![];
     if let Some(outputs) = &model.outputs {
