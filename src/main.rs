@@ -704,7 +704,7 @@ https://text-to-cad.zoo.dev/view/{}",
                 ))
                 .embed(
                     serenity::builder::CreateEmbed::new()
-                        .title(prompt.replace(':', " ").replace(';', " "))
+                        .title(prompt.replace([':', ';'], " "))
                         .image(&format!("attachment://{}", image_name))
                         // Thumbs up or down emoji.
                         .footer(serenity::builder::CreateEmbedFooter::new(&format!(
