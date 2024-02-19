@@ -383,6 +383,7 @@ async fn run_cmd(opts: &Opts) -> Result<()> {
     Ok(())
 }
 
+/// Get information about this bot.
 #[poise::command(slash_command, prefix_command)]
 async fn about(ctx: Context<'_>) -> Result<()> {
     ctx.reply("A discord bot to play with the KittyCAD Text to CAD API. 🤪")
@@ -391,6 +392,7 @@ async fn about(ctx: Context<'_>) -> Result<()> {
     Ok(())
 }
 
+/// Get the latency of the bot.
 #[poise::command(slash_command, prefix_command)]
 async fn latency(ctx: Context<'_>) -> Result<()> {
     ctx.reply(&format!("The shard latency is {:?}", ctx.ping().await))
@@ -399,6 +401,7 @@ async fn latency(ctx: Context<'_>) -> Result<()> {
     Ok(())
 }
 
+/// Ping the bot.
 #[poise::command(slash_command, prefix_command)]
 async fn ping(ctx: Context<'_>) -> Result<()> {
     ctx.reply("🏓").await?;
