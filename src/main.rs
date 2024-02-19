@@ -226,7 +226,7 @@ impl Environment {
     }
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 128)]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
