@@ -20,7 +20,7 @@ reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 schemars = { version = "0.8", features = ["chrono", "uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.113"
-serenity = {version = "0.12.0", features = ["collector", "framework", "standard_framework", "rustls_backend"]}
+serenity = {version = "0.12.0", default-features = false, features = ["cache", "collector", "framework", "standard_framework", "rustls_backend", "utils"]}
 signal-hook = "0.3.17"
 slog = "2.7.0"
 slog-async = "2.8.0"
