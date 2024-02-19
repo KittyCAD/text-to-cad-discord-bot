@@ -15,7 +15,7 @@ git_rev = "0.1.0"
 kittycad = "0.2.53"
 lazy_static = "1.4.0"
 log = { version = "0.4.20", features = ["serde"] }
-parse-display = "0.8.2"
+parse-display = "0.9.0"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 schemars = { version = "0.8", features = ["chrono", "uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
