@@ -14,7 +14,7 @@ futures = "0.3"
 git_rev = "0.1.0"
 kittycad = "0.2.53"
 lazy_static = "1.4.0"
-log = { version = "0.4.20", features = ["serde"] }
+log = { version = "0.4.21", features = ["serde"] }
 parse-display = "0.9.0"
 poise = "0.6.1"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
