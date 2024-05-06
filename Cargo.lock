@@ -617,7 +617,7 @@ dependencies = [
 [[package]]
 name = "dropshot"
 version = "0.10.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#33e158ba518a9b42aa036a0f6b605d73f11d8b23"
+source = "git+https://github.com/oxidecomputer/dropshot?branch=main#f10e42a49a2ab592fc3ed0a6485a4445ea496e53"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -640,6 +640,7 @@ dependencies = [
  "rustls 0.22.4",
  "rustls-pemfile 2.1.2",
  "schemars",
+ "scopeguard",
  "serde",
  "serde_json",
  "serde_path_to_error",
@@ -661,7 +662,7 @@ dependencies = [
 [[package]]
 name = "dropshot_endpoint"
 version = "0.10.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#33e158ba518a9b42aa036a0f6b605d73f11d8b23"
+source = "git+https://github.com/oxidecomputer/dropshot?branch=main#f10e42a49a2ab592fc3ed0a6485a4445ea496e53"
 dependencies = [
  "proc-macro2",
  "quote",
