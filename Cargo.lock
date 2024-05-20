@@ -616,8 +616,9 @@ dependencies = [
 
 [[package]]
 name = "dropshot"
-version = "0.10.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#cc3ccfc4648d9a5d7c0929f5b6fec3ea4a78aec9"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a391eeedf8a75a188eb670327c704b7ab10eb2bb890e2ec0880dd21d609fb6e8"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -661,8 +662,9 @@ dependencies = [
 
 [[package]]
 name = "dropshot_endpoint"
-version = "0.10.1-dev"
-source = "git+https://github.com/oxidecomputer/dropshot?branch=main#cc3ccfc4648d9a5d7c0929f5b6fec3ea4a78aec9"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9058c9c7e4a6b378cd12e71dc155bb15d0d4f8e1e6039ce2cf0a7c0c81043e33"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2309,9 +2311,9 @@ dependencies = [
 
 [[package]]
 name = "schemars"
-version = "0.8.19"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc6e7ed6919cb46507fb01ff1654309219f62b4d603822501b0b80d42f6f21ef"
+checksum = "b0218ceea14babe24a4a5836f86ade86c1effbc198164e619194cb5069187e29"
 dependencies = [
  "bigdecimal",
  "bytes",
@@ -2326,9 +2328,9 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "0.8.19"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "185f2b7aa7e02d418e453790dde16890256bbd2bcd04b7dc5348811052b53f49"
+checksum = "3ed5a1ccce8ff962e31a165d41f6e2a2dd1245099dc4d594f5574a86cd90f4d3"
 dependencies = [
  "proc-macro2",
  "quote",
