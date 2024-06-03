@@ -27,7 +27,7 @@ slog-async = "2.8.0"
 slog-json = "2.6.1"
 slog-term = "2.9.1"
 tokio = { version = "1.38.0", features = ["full"] }
-tokio-tungstenite = { version = "0.21.0", features = ["rustls-tls-native-roots"] }
+tokio-tungstenite = { version = "0.23.0", features = ["rustls-tls-native-roots"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["registry", "std", "fmt", "smallvec", "ansi", "tracing-log", "json"] }
 uuid = { version = "1.7.0", features = ["v4", "serde"] }
