@@ -13,7 +13,7 @@ dropshot = { version = "0.10" }
 futures = "0.3"
 git_rev = "0.1.0"
 kittycad = "0.3.6"
-lazy_static = "1.4.0"
+lazy_static = "1.5.0"
 log = { version = "0.4.21", features = ["serde"] }
 parse-display = "0.9.1"
 poise = "0.6.1"
