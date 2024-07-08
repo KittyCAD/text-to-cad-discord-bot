@@ -6,7 +6,7 @@ use anyhow::Result;
 pub async fn model_to_image(logger: &slog::Logger, client: &kittycad::Client, gltf_file: &[u8]) -> Result<Vec<u8>> {
     let ws = client
         .modeling()
-        .commands_ws(None, None, None, None, None, None, Some(false))
+        .commands_ws(None, None, None, None, None, None, None, Some(false))
         .await?;
 
     let engine = crate::engine::EngineConnection::new(ws).await?;
