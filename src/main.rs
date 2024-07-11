@@ -610,10 +610,7 @@ async fn get_model_for_prompt(
         slog::debug!(logger, "Polling for design status: {}", status);
 
         // Poll for the status.
-        let result = users_client
-            .api_calls()
-            .get_async_operation(&model.id.to_string())
-            .await?;
+        let result = users_client.api_calls().get_async_operation(model.id).await?;
 
         if let kittycad::types::AsyncApiCallOutput::TextToCad {
             completed_at,
