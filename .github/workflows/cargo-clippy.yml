@@ -18,6 +18,8 @@ on:
       - "rust-toolchain"
       - "rust-toolchain.toml"
 name: cargo clippy
+permissions:
+  contents: write
 jobs:
   cargoclippy:
     name: cargo clippy
