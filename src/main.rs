@@ -565,7 +565,7 @@ Feedback must be left within the next {} seconds."#,
         if let Some(ai_reaction) = reaction {
             // Send our feedback on the model.
             users_client
-                .ai()
+                .ml()
                 .create_text_to_cad_model_feedback(ai_reaction, model.id)
                 .await?;
             // Let the user know we got their feedback.
@@ -585,9 +585,10 @@ async fn get_model_for_prompt(
     slog::debug!(logger, "Got design request: {}", prompt);
 
     // Create the text-to-cad request.
-    let mut model: kittycad::types::TextToCad = users_client
-        .ai()
+    let mut gen_model: kittycad::types::TextToCad = users_client
+        .ml()
         .create_text_to_cad(
+            None,
             kittycad::types::FileExportFormat::Gltf,
             &kittycad::types::TextToCadCreateBody {
                 prompt: prompt.to_string(),
@@ -595,10 +596,10 @@ async fn get_model_for_prompt(
         )
         .await?;
 
-    slog::debug!(logger, "Got design response: {}", model);
+    slog::debug!(logger, "Got design response: {}", gen_model);
 
     // Poll until the model is ready.
-    let mut status = model.status.clone();
+    let mut status = gen_model.status.clone();
     // Get the current time.
     let start = std::time::Instant::now();
     // Give it 5 minutes to complete. That should be way
@@ -610,7 +611,7 @@ async fn get_model_for_prompt(
         slog::debug!(logger, "Polling for design status: {}", status);
 
         // Poll for the status.
-        let result = users_client.api_calls().get_async_operation(model.id).await?;
+        let result = users_client.api_calls().get_async_operation(gen_model.id).await?;
 
         if let kittycad::types::AsyncApiCallOutput::TextToCad {
             completed_at,
@@ -626,9 +627,11 @@ async fn get_model_for_prompt(
             status,
             updated_at,
             user_id,
+            code,
+            model,
         } = result
         {
-            model = kittycad::types::TextToCad {
+            gen_model = kittycad::types::TextToCad {
                 completed_at,
                 created_at,
                 error,
@@ -642,38 +645,40 @@ async fn get_model_for_prompt(
                 status,
                 updated_at,
                 user_id,
+                code,
+                model,
             };
         } else {
             anyhow::bail!("Unexpected response type: {:?}", result);
         }
 
-        status = model.status.clone();
+        status = gen_model.status.clone();
 
         // Wait for a bit before polling again.
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 
     // If the model failed we will want to tell the user.
-    if model.status == kittycad::types::ApiCallStatus::Failed {
-        if let Some(error) = model.error {
+    if gen_model.status == kittycad::types::ApiCallStatus::Failed {
+        if let Some(error) = gen_model.error {
             slog::warn!(logger, "Design failed: {}", error);
             anyhow::bail!("Your prompt returned an error: ```\n{}\n```", error);
         } else {
-            slog::warn!(logger, "Design failed: {:?}", model);
+            slog::warn!(logger, "Design failed: {:?}", gen_model);
             anyhow::bail!("Your prompt returned an error, but no error message. :(");
         }
     }
 
-    if model.status != kittycad::types::ApiCallStatus::Completed {
-        slog::warn!(logger, "Design timed out: {:?}", model);
+    if gen_model.status != kittycad::types::ApiCallStatus::Completed {
+        slog::warn!(logger, "Design timed out: {:?}", gen_model);
 
         anyhow::bail!("Your prompt timed out");
     }
 
     // Okay, we successfully got a model!
-    slog::debug!(logger, "Design completed: {:?}", model.prompt);
+    slog::debug!(logger, "Design completed: {:?}", gen_model.prompt);
 
-    Ok(model)
+    Ok(gen_model)
 }
 
 async fn get_image_bytes_for_model(
