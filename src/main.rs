@@ -555,9 +555,9 @@ Feedback must be left within the next {} seconds."#,
     if let Some(reaction) = collector {
         let emoji = reaction.emoji.as_data();
         let reaction = if emoji == "👍" {
-            Some(kittycad::types::AiFeedback::ThumbsUp)
+            Some(kittycad::types::MlFeedback::ThumbsUp)
         } else if emoji == "👎" {
-            Some(kittycad::types::AiFeedback::ThumbsDown)
+            Some(kittycad::types::MlFeedback::ThumbsDown)
         } else {
             None
         };

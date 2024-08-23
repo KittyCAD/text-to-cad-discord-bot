@@ -9,7 +9,7 @@ pub async fn model_to_image(logger: &slog::Logger, client: &kittycad::Client, gl
         .commands_ws(None, None, None, None, None, None, None, Some(false))
         .await?;
 
-    let engine = crate::engine::EngineConnection::new(ws).await?;
+    let engine = crate::engine::EngineConnection::new(ws.0).await?;
 
     // Send an import request to the engine.
     slog::info!(logger, "Sending import request to engine");
