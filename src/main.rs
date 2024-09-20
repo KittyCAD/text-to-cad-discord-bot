@@ -497,7 +497,7 @@ async fn run_text_to_cad_prompt(ctx: &Context<'_>, prompt: &str) -> Result<()> {
             ctx.channel_id()
                 .send_message(
                     &ctx.http(),
-                    serenity::builder::CreateMessage::new().content(&format!(
+                    serenity::builder::CreateMessage::new().content(format!(
                         "{}, you can login to view your model or give feedback at:
 https://text-to-cad.zoo.dev/view/{}\n\nUnfortunately, we were unable to generate an image for your model. But you can still login to view it.\n\n```\n{}```\n",
                         ctx.author().mention(),
@@ -517,7 +517,7 @@ https://text-to-cad.zoo.dev/view/{}\n\nUnfortunately, we were unable to generate
         .send_message(
             &ctx.http(),
             serenity::builder::CreateMessage::new()
-                .content(&format!(
+                .content(format!(
                     "{}, you can login to view your model or give feedback at:
 https://text-to-cad.zoo.dev/view/{}",
                     ctx.author().mention(),
@@ -526,9 +526,9 @@ https://text-to-cad.zoo.dev/view/{}",
                 .embed(
                     serenity::builder::CreateEmbed::new()
                         .title(prompt)
-                        .image(&format!("attachment://{}", image_name))
+                        .image(format!("attachment://{}", image_name))
                         // Thumbs up or down emoji.
-                        .footer(serenity::builder::CreateEmbedFooter::new(&format!(
+                        .footer(serenity::builder::CreateEmbedFooter::new(format!(
                             r#"React with a 👍 or 👎 to this message to give feedback.
 Feedback must be left within the next {} seconds."#,
                             feedback_time_seconds
