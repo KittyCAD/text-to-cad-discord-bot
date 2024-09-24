@@ -1249,9 +1249,9 @@ dependencies = [
 
 [[package]]
 name = "kittycad"
-version = "0.3.20"
+version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6d94d74f88582f566f81fa443c638439f5d7b7eeb80d4c321f64703310a45da"
+checksum = "625e8da00719730e21e6df5cdbae02dacdf076b355bfb9bab8c24fb0006aa84c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1266,7 +1266,7 @@ dependencies = [
  "itertools 0.13.0",
  "log",
  "mime_guess",
- "parse-display 0.9.1",
+ "parse-display",
  "phonenumber",
  "rand",
  "reqwest",
@@ -1699,38 +1699,13 @@ dependencies = [
 
 [[package]]
 name = "parse-display"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "914a1c2265c98e2446911282c6ac86d8524f495792c38c5bd884f80499c7538a"
-dependencies = [
- "parse-display-derive 0.9.1",
- "regex",
- "regex-syntax 0.8.4",
-]
-
-[[package]]
-name = "parse-display"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "287d8d3ebdce117b8539f59411e4ed9ec226e0a4153c7f55495c6070d68e6f72"
 dependencies = [
- "parse-display-derive 0.10.0",
+ "parse-display-derive",
  "regex",
  "regex-syntax 0.8.4",
-]
-
-[[package]]
-name = "parse-display-derive"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae7800a4c974efd12df917266338e79a7a74415173caf7e70aa0a0707345281"
-dependencies = [
- "proc-macro2",
- "quote",
- "regex",
- "regex-syntax 0.8.4",
- "structmeta",
- "syn 2.0.72",
 ]
 
 [[package]]
@@ -2894,7 +2869,7 @@ dependencies = [
  "log",
  "openapi-lint",
  "openapiv3",
- "parse-display 0.10.0",
+ "parse-display",
  "poise",
  "portpicker",
  "pretty_assertions",
