@@ -12,12 +12,12 @@ dashmap = "6.1.0"
 dropshot = { version = "0.12" }
 futures = "0.3"
 git_rev = "0.1.0"
-kittycad = "0.3.22"
+kittycad = "0.3.23"
 lazy_static = "1.5.0"
 log = { version = "0.4.22", features = ["serde"] }
 parse-display = "0.10.0"
 poise = "0.6.1"
-reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 schemars = { version = "0.8", features = ["chrono", "uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.128"
