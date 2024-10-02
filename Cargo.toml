@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 anyhow = { version = "1.0.89", features = [] }
 bson = { version = "2.13.0", features = ["uuid-1", "chrono"] }
-clap = { version = "4.5.18", features = ["cargo", "derive", "env", "unicode"] }
+clap = { version = "4.5.19", features = ["cargo", "derive", "env", "unicode"] }
 dashmap = "6.1.0"
 dropshot = { version = "0.12" }
 futures = "0.3"
