@@ -9,7 +9,7 @@ anyhow = { version = "1.0.91", features = [] }
 bson = { version = "2.13.0", features = ["uuid-1", "chrono"] }
 clap = { version = "4.5.20", features = ["cargo", "derive", "env", "unicode"] }
 dashmap = "6.1.0"
-dropshot = { version = "0.12" }
+dropshot = { version = "0.13" }
 futures = "0.3"
 git_rev = "0.1.0"
 kittycad = "0.3.25"
