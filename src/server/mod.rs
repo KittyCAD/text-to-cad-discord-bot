@@ -48,7 +48,7 @@ pub async fn create_server(
 
     let config_dropshot = ConfigDropshot {
         bind_address: s.address.parse()?,
-        request_body_max_bytes: 107374182400, // 100 Gigiabytes.
+        default_request_body_max_bytes: 107374182400, // 100 Gigiabytes.
         default_handler_task_mode: dropshot::HandlerTaskMode::CancelOnDisconnect,
         log_headers: Default::default(),
     };
@@ -68,7 +68,10 @@ pub async fn create_server(
 /// Get the OpenAPI specification for the server.
 pub fn get_openapi(api: &mut ApiDescription<Arc<Context>>) -> Result<serde_json::Value> {
     // Create the API schema.
-    let mut definition = api.openapi("KittyCAD Text to CAD Discord Bot", clap::crate_version!());
+    let mut definition = api.openapi(
+        "KittyCAD Text to CAD Discord Bot",
+        semver::Version::parse(clap::crate_version!()).expect("Crate version should be valid semver"),
+    );
     definition
         .description("A discord bot to play with the KittyCAD Text to CAD API.")
         .contact_url("https://kittycad.io")
