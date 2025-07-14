@@ -33,7 +33,7 @@ jobs:
       - uses: taiki-e/install-action@nextest
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.0
+        uses: Swatinem/rust-cache@v2
 
       - name: Install deps
         shell: bash
