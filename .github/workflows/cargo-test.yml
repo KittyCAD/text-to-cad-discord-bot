@@ -8,11 +8,6 @@ on:
       - Cargo.lock
       - .github/workflows/cargo-test.yml
   pull_request:
-    paths:
-      - "**.rs"
-      - Cargo.toml
-      - Cargo.lock
-      - .github/workflows/cargo-test.yml
   workflow_dispatch:
 permissions: read-all
 name: cargo test
@@ -33,7 +28,7 @@ jobs:
       - uses: taiki-e/install-action@nextest
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.7.5
+        uses: Swatinem/rust-cache@v2
 
       - name: Install deps
         shell: bash

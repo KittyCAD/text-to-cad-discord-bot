@@ -10,13 +10,6 @@ on:
       - "rust-toolchain"
       - "rust-toolchain.toml"
   pull_request:
-    paths:
-      - "**.rs"
-      - Cargo.toml
-      - Cargo.lock
-      - .github/workflows/cargo-clippy.yml
-      - "rust-toolchain"
-      - "rust-toolchain.toml"
 name: cargo clippy
 permissions:
   contents: write
@@ -35,7 +28,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.7.5
+        uses: Swatinem/rust-cache@v2
 
       - name: Run clippy
         run: cargo clippy --all --tests --all-features --examples --benches
