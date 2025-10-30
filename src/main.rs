@@ -119,8 +119,8 @@ pub struct Server {
     #[clap(long, env = "DISCORD_REDIRECT_URI")]
     pub discord_redirect_uri: String,
 
-    /// The KittyCAD API token to use.
-    #[clap(long, env = "KITTYCAD_API_TOKEN")]
+    /// The Zoo API token to use.
+    #[clap(long, env = "ZOO_API_TOKEN")]
     pub kittycad_api_token: String,
 }
 
@@ -135,8 +135,8 @@ pub struct ConvertImage {
     #[clap(short, long = "image-path")]
     pub image_path: std::path::PathBuf,
 
-    /// The KittyCAD API token to use.
-    #[clap(long, env = "KITTYCAD_API_TOKEN")]
+    /// The Zoo API token to use.
+    #[clap(long, env = "ZOO_API_TOKEN")]
     pub kittycad_api_token: String,
 }
 
@@ -147,8 +147,8 @@ pub struct TextToCad {
     #[clap(short, long)]
     pub prompt: String,
 
-    /// The KittyCAD API token to use.
-    #[clap(long, env = "KITTYCAD_API_TOKEN")]
+    /// The Zoo API token to use.
+    #[clap(long, env = "ZOO_API_TOKEN")]
     pub kittycad_api_token: String,
 }
 
