@@ -12,7 +12,7 @@ jobs:
     name: cargo build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install latest rust
         uses: actions-rs/toolchain@v1
         with:
